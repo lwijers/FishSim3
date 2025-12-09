@@ -23,7 +23,13 @@ from engine.app.constants import (
     DEFAULT_TANK_ID,
     DEFAULT_WINDOW_SIZE,
 )
-from engine.game.systems import MovementSystem, RectRenderSystem, FishFSMSystem, SpriteRenderSystem
+from engine.game.systems import (
+    MovementSystem,
+    RectRenderSystem,
+    FishFSMSystem,
+    SpriteRenderSystem,
+    PlacementSystem,
+)
 
 @dataclass
 class Engine:
@@ -154,15 +160,18 @@ def build_engine() -> Engine:
     scheduler = Scheduler()
 
     fsm_sys = FishFSMSystem(resources)
+    placement_sys = PlacementSystem(resources)
     move_sys = MovementSystem(resources)
     rect_render_sys = RectRenderSystem(resources)
     sprite_render_sys = SpriteRenderSystem(resources)
 
     # Order matters:
     # - FSM before Movement in logic
+    # - Placement consumes input events and queues commands before movement
     # - RectRenderSystem clears & presents
     # - SpriteRenderSystem draws on top (no clear/present)
     scheduler.add_system(fsm_sys, phase="logic")
+    scheduler.add_system(placement_sys, phase="logic")
     scheduler.add_system(move_sys, phase="logic")
     scheduler.add_system(rect_render_sys, phase="render")
     scheduler.add_system(sprite_render_sys, phase="render")

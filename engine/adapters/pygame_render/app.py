@@ -7,6 +7,7 @@ import pygame
 
 from engine.adapters.pygame_render.renderer import Renderer
 from engine.adapters.asset_loader import Assets
+from engine.adapters.pygame_input import InputAdapter
 from engine.app.constants import (
     FPS,
     DEFAULT_WINDOW_SIZE,
@@ -42,6 +43,7 @@ class PygameApp:
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self._running: bool = False
+        self.input: InputAdapter | None = None
 
         self._init_pygame()
 
@@ -66,6 +68,9 @@ class PygameApp:
         renderer = Renderer(self.screen, bg_color=bg_color)
         self.engine.resources.set("renderer", renderer)
         self.engine.resources.set("screen_size", (self.width, self.height))
+
+        # Input adapter (translates pygame events to domain events)
+        self.input = InputAdapter(self.engine.resources)
 
         # --- Attach Assets as a resource (images + sounds) ---
         # Base path is "assets" by default; adjust if your folder differs.
@@ -118,6 +123,9 @@ class PygameApp:
                     self._running = False
                 elif event.type == pygame.VIDEORESIZE:
                     self._handle_resize(event)
+                # Route all events through the input adapter for domain events.
+                if self.input is not None:
+                    self.input.handle_event(event)
 
             # --- Engine update & render ---
             self.engine.update(dt)
