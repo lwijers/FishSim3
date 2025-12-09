@@ -1,6 +1,5 @@
 # engine/tests/test_game_rect_render.py
 from __future__ import annotations
-
 from engine.ecs import World
 from engine.resources import ResourceStore
 from engine.game.components import Position, RectSprite
@@ -39,11 +38,9 @@ def _make_world_and_render_system(
     world = World()
     resources = ResourceStore()
     fake_renderer = FakeRenderer()
-
     resources.set("renderer", fake_renderer)
     resources.set("logical_size", logical_size)
     resources.set("screen_size", screen_size)
-
     render_sys = RectRenderSystem(resources)
     return world, resources, render_sys, fake_renderer
 
@@ -58,6 +55,7 @@ def test_rect_render_system_draws_rectangles_no_scaling() -> None:
     """
     logical_size = (800, 600)
     screen_size = (800, 600)
+
     world, resources, render_sys, fake_renderer = _make_world_and_render_system(
         logical_size=logical_size,
         screen_size=screen_size,
@@ -103,7 +101,6 @@ def test_rect_render_system_scales_logical_to_screen() -> None:
     """
     When screen_size != logical_size, RectRenderSystem should scale logical
     positions and sizes into screen space.
-
     Example:
       logical_size = (400, 300)
       screen_size  = (800, 600)
@@ -111,6 +108,7 @@ def test_rect_render_system_scales_logical_to_screen() -> None:
     """
     logical_size = (400, 300)
     screen_size = (800, 600)
+
     world, resources, render_sys, fake_renderer = _make_world_and_render_system(
         logical_size=logical_size,
         screen_size=screen_size,
@@ -141,4 +139,60 @@ def test_rect_render_system_scales_logical_to_screen() -> None:
     assert w_px == 60.0
     assert h_px == 80.0
     assert color == (123, 111, 222)
+    assert outline_width == 0
+
+
+def test_rect_render_system_letterboxes_to_preserve_aspect_ratio() -> None:
+    """
+    When screen_size and logical_size have different aspect ratios,
+    RectRenderSystem should:
+      - use a UNIFORM scale factor (no stretching)
+      - center the logical world, adding letterbox bars on one axis.
+    Example:
+      logical_size = (1280, 720)   # 16:9
+      screen_size  = (1024, 768)   # 4:3
+
+      scale_x = 1024 / 1280 = 0.8
+      scale_y =  768 /  720 ≈ 1.066...
+      scale   = min(scale_x, scale_y) = 0.8
+
+      rendered_world_height = 720 * 0.8 = 576
+      vertical letterbox total = 768 - 576 = 192
+      => top offset = 96, bottom offset = 96
+    """
+    logical_size = (1280, 720)
+    screen_size = (1024, 768)
+
+    world, resources, render_sys, fake_renderer = _make_world_and_render_system(
+        logical_size=logical_size,
+        screen_size=screen_size,
+    )
+
+    # Put a sprite at the logical origin (0,0), sized to 10% of the logical world
+    eid = world.create_entity()
+    world.add_component(eid, Position(x=0.0, y=0.0))
+    world.add_component(
+        eid,
+        RectSprite(width=128.0, height=72.0, color=(255, 255, 255)),
+    )
+
+    render_sys.update(world, dt=0.016)
+
+    assert fake_renderer.cleared is True
+    assert fake_renderer.presented is True
+    assert len(fake_renderer.draw_calls) == 1
+
+    x_px, y_px, w_px, h_px, color, outline_width = fake_renderer.draw_calls[0]
+
+    # From the math in the docstring:
+    #   scale = 0.8
+    #   offset_x = 0 (fills width exactly)
+    #   offset_y = 96
+    #   w_px = 128 * 0.8 = 102.4
+    #   h_px =  72 * 0.8 = 57.6
+    assert x_px == 0.0
+    assert y_px == 96.0
+    assert w_px == 102.4
+    assert h_px == 57.6
+    assert color == (255, 255, 255)
     assert outline_width == 0

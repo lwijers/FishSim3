@@ -1,6 +1,5 @@
 # engine/game/systems/movement_system.py
 from __future__ import annotations
-
 from engine.ecs import System, World
 from engine.resources import ResourceStore
 from engine.app.constants import FALLBACK_SCREEN_SIZE
@@ -15,21 +14,32 @@ from engine.game.components.movement_intent import MovementIntent
 class MovementSystem(System):
     """
     Simple movement + bounce system.
+
     - Integrates position from velocity.
     - If a MovementIntent exists for an entity, it *drives* its Velocity:
         vel := intent.target_v
-    - Bounces rectangles off the *tank bounds* if available.
-    - Falls back to full-screen bounds when the entity is not in a tank
+    - Bounces rectangles off the *tank bounds* if available (logical space).
+    - Falls back to full *logical* bounds when the entity is not in a tank
       or the tank has no TankBounds.
+
+    Note: logical space is independent of the actual window size.
+    Rendering scales logical → screen; movement always works in logical units.
     """
     phase = "logic"
 
     def update(self, world: World, dt: float) -> None:
         resources: ResourceStore = self.resources  # type: ignore[assignment]
-        # Fallback bounds: whole screen
-        screen_w, screen_h = resources.try_get("screen_size", FALLBACK_SCREEN_SIZE)
 
-        # Component stores we’ll look into for tank-based bounds and intents
+        # Logical game-space size:
+        #  - prefer explicit logical_size
+        #  - fall back to screen_size
+        #  - finally fall back to a constant
+        logical_w, logical_h = resources.try_get(
+            "logical_size",
+            resources.try_get("screen_size", FALLBACK_SCREEN_SIZE),
+        )
+
+        # Component stores for tank bounds and intents
         in_tank_store = world.get_components(InTank)
         tank_bounds_store = world.get_components(TankBounds)
         intent_store = world.get_components(MovementIntent)
@@ -44,7 +54,7 @@ class MovementSystem(System):
                 vel.vy = intent.target_vy
 
             # ------------------------------------------------------------
-            # 2) Determine which bounds apply: tank bounds or screen
+            # 2) Determine which bounds apply: tank bounds or full logical
             # ------------------------------------------------------------
             bounds = None
             in_tank = in_tank_store.get(eid)
@@ -52,17 +62,17 @@ class MovementSystem(System):
                 bounds = tank_bounds_store.get(in_tank.tank)
 
             if bounds is not None:
-                # Use the tank's rectangle
+                # Use the tank's rectangle (logical coords)
                 left = float(bounds.x)
                 top = float(bounds.y)
                 right = float(bounds.x + bounds.width)
                 bottom = float(bounds.y + bounds.height)
             else:
-                # No tank / no TankBounds: fall back to screen rect
+                # No tank / no TankBounds: fall back to full logical area
                 left = 0.0
                 top = 0.0
-                right = float(screen_w)
-                bottom = float(screen_h)
+                right = float(logical_w)
+                bottom = float(logical_h)
 
             # Effective motion bounds for the *top-left* of the sprite
             min_x = left
