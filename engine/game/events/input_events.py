@@ -5,6 +5,13 @@ from dataclasses import dataclass
 class ClickWorld:
     x: float
     y: float
+    button: int = 1
+
+
+@dataclass(frozen=True)
+class PointerMove:
+    x: float
+    y: float
 
 @dataclass(frozen=True)
 class ClickUI:

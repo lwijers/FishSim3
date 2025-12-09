@@ -62,6 +62,9 @@ class RectRenderSystem(System):
         # Clear whole screen first
         renderer.clear()
 
+        # Borders metadata from UI (optional)
+        borders = resources.try_get("ui_borders", {})
+
         # Draw all entities that have Position + RectSprite
         drew_any = False
         for eid, pos, sprite in world.view(Position, RectSprite):
@@ -72,7 +75,21 @@ class RectRenderSystem(System):
             y_px = offset_y + pos.y * scale
             w_px = sprite.width * scale
             h_px = sprite.height * scale
-            renderer.draw_rect(x_px, y_px, w_px, h_px, sprite.color)
+            border = borders.get(eid)
+            if border:
+                border_color, border_width, corner_radius = border
+                renderer.draw_rect(x_px, y_px, w_px, h_px, border_color, outline_width=border_width, border_radius=corner_radius)
+                renderer.draw_rect(
+                    x_px + border_width,
+                    y_px + border_width,
+                    w_px - 2 * border_width,
+                    h_px - 2 * border_width,
+                    sprite.color,
+                    outline_width=0,
+                    border_radius=max(0, corner_radius - border_width),
+                )
+            else:
+                renderer.draw_rect(x_px, y_px, w_px, h_px, sprite.color)
             drew_any = True
 
         # If sprites are present in the world, let SpriteRenderSystem own present().

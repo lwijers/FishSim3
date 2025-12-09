@@ -33,12 +33,14 @@ class Renderer:
         height: float,
         color,
         outline_width: int = 0,
+        border_radius: int = 0,
     ) -> None:
         """
         Draw a rectangle given primitive values (no pygame.Rect in game layer).
+        Supports outline + rounded corners via border_radius.
         """
         rect = pygame.Rect(int(x), int(y), int(width), int(height))
-        pygame.draw.rect(self.screen, color, rect, outline_width)
+        pygame.draw.rect(self.screen, color, rect, outline_width, border_radius=border_radius)
 
     def draw_image(
         self,

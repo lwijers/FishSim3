@@ -9,6 +9,7 @@ from engine.game.components.rect_sprite import RectSprite
 from engine.game.components.in_tank import InTank
 from engine.game.components.tank_bounds import TankBounds
 from engine.game.components.movement_intent import MovementIntent
+from engine.game.components.falling import Falling
 
 
 class MovementSystem(System):
@@ -43,8 +44,16 @@ class MovementSystem(System):
         in_tank_store = world.get_components(InTank)
         tank_bounds_store = world.get_components(TankBounds)
         intent_store = world.get_components(MovementIntent)
+        falling_store = world.get_components(Falling)
 
         for eid, pos, vel, sprite in world.view(Position, Velocity, RectSprite):
+            falling = falling_store.get(eid)
+            if falling is not None and falling.stop_on_floor and falling.grounded:
+                # Already landed: freeze motion.
+                vel.vx = 0.0
+                vel.vy = 0.0
+                continue
+
             # ------------------------------------------------------------
             # 1) Apply MovementIntent (if present) to velocity
             # ------------------------------------------------------------
@@ -103,4 +112,9 @@ class MovementSystem(System):
                 vel.vy = -vel.vy
             elif pos.y > max_y:
                 pos.y = max_y
-                vel.vy = -vel.vy
+                if falling is not None and falling.stop_on_floor:
+                    vel.vy = 0.0
+                    vel.vx = 0.0
+                    falling.grounded = True
+                else:
+                    vel.vy = -vel.vy

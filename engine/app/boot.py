@@ -14,9 +14,11 @@ from engine.game.factories import (
     create_tank,
     load_tank_config,
 )
+from engine.game.components import Position, RectSprite, UIHitbox, UIButton, SpriteRef
 from engine.game.rules import spawn_fish_in_tank_if_allowed
 from engine.game.components.tank_bounds import TankBounds
-from engine.game.data.configs import load_settings_config, load_ui_config
+from engine.game.data.configs import load_settings_config, load_ui_config, load_pellet_config, load_falling_config
+from engine.game.data.configs import load_pellet_config
 from engine.app.constants import (
     RNG_ROOT_SEED,
     RNG_MAX_INT,
@@ -29,6 +31,8 @@ from engine.game.systems import (
     FishFSMSystem,
     SpriteRenderSystem,
     PlacementSystem,
+    FallingSystem,
+    UIButtonSystem,
 )
 
 @dataclass
@@ -106,6 +110,43 @@ def _populate_debug_fish(
         )
 
 
+def _create_pellet_button(world: World, resources: ResourceStore, logical_w: float, logical_h: float) -> None:
+    """Create UI button entity for pellet tool + icon overlay."""
+    ui_cfg = resources.try_get("ui_config", {})
+    palette = ui_cfg.get("buttons", {}).get("palette", {})
+    inactive = tuple(palette.get("inactive", (42, 82, 110)))
+    border_color = tuple(palette.get("border", (20, 40, 60)))
+    border_width = int(ui_cfg.get("buttons", {}).get("border_width", 2))
+    corner_radius = int(ui_cfg.get("buttons", {}).get("corner_radius", 8))
+    pellet_btn_cfg = ui_cfg.get("buttons", {}).get("pellet_button", {})
+    size = float(pellet_btn_cfg.get("size", 64.0))
+    padding = float(pellet_btn_cfg.get("padding", 12.0))
+    offset_x = float(pellet_btn_cfg.get("offset_x", 16.0))
+    offset_bottom = float(pellet_btn_cfg.get("offset_bottom", 16.0))
+    icon_size = float(pellet_btn_cfg.get("icon_size", 32.0))
+
+    x = offset_x
+    y = max(0.0, logical_h - size - offset_bottom)
+
+    # Button background + hitbox + toggle state
+    btn_eid = world.create_entity()
+    world.add_component(btn_eid, Position(x=x, y=y))
+    world.add_component(btn_eid, RectSprite(width=size, height=size, color=inactive))
+    world.add_component(btn_eid, UIHitbox(width=size, height=size))
+    world.add_component(btn_eid, UIButton(tool_id="pellet", active=False))
+    # Border stored in RectSprite via outline color/width metadata on resources
+    borders = resources.try_get("ui_borders", {})
+    borders[btn_eid] = (border_color, border_width, corner_radius)
+    resources.set("ui_borders", borders)
+
+    # Icon overlay centered inside the button
+    icon_x = x + (size - icon_size) / 2.0
+    icon_y = y + (size - icon_size) / 2.0
+    icon_eid = world.create_entity()
+    world.add_component(icon_eid, Position(x=icon_x, y=icon_y))
+    world.add_component(icon_eid, SpriteRef(sprite_id="pellet", width=icon_size, height=icon_size))
+
+
 def build_engine() -> Engine:
     """
     Composition root for the core engine.
@@ -131,10 +172,13 @@ def build_engine() -> Engine:
     logical_h = float(logical_cfg.get("height", 0.0))
     if logical_w > 0.0 and logical_h > 0.0:
         resources.set("logical_size", (logical_w, logical_h))
+    else:
+        logical_w, logical_h = DEFAULT_WINDOW_SIZE
 
     # Global event bus resource (will be used later by game & adapters)
     events = EventBus()
     resources.register("events", events)
+    resources.set("active_tool", None)
 
     # ------------------------------------------------------------------
     # Deterministic RNG hierarchy
@@ -153,6 +197,12 @@ def build_engine() -> Engine:
     tank_cfg = load_tank_config()
     resources.set("tank_config", tank_cfg)
 
+    pellet_cfg = load_pellet_config()
+    resources.set("pellet_config", pellet_cfg)
+
+    falling_cfg = load_falling_config()
+    resources.set("falling_config", falling_cfg)
+
     # ------------------------------------------------------------------
     # World + scheduler + systems
     # ------------------------------------------------------------------
@@ -160,18 +210,24 @@ def build_engine() -> Engine:
     scheduler = Scheduler()
 
     fsm_sys = FishFSMSystem(resources)
+    ui_button_sys = UIButtonSystem(resources)
     placement_sys = PlacementSystem(resources)
+    falling_sys = FallingSystem(resources)
     move_sys = MovementSystem(resources)
     rect_render_sys = RectRenderSystem(resources)
     sprite_render_sys = SpriteRenderSystem(resources)
 
     # Order matters:
     # - FSM before Movement in logic
+    # - UI buttons process clicks before placement
     # - Placement consumes input events and queues commands before movement
+    # - Falling applies gravity before integration/movement
     # - RectRenderSystem clears & presents
     # - SpriteRenderSystem draws on top (no clear/present)
     scheduler.add_system(fsm_sys, phase="logic")
+    scheduler.add_system(ui_button_sys, phase="logic")
     scheduler.add_system(placement_sys, phase="logic")
+    scheduler.add_system(falling_sys, phase="logic")
     scheduler.add_system(move_sys, phase="logic")
     scheduler.add_system(rect_render_sys, phase="render")
     scheduler.add_system(sprite_render_sys, phase="render")
@@ -219,5 +275,10 @@ def build_engine() -> Engine:
     # ------------------------------------------------------------------
     rng_spawns: random.Random = resources.get("rng_spawns")
     _populate_debug_fish(world, species_cfg, tank_eid, tank_def, rng_spawns)
+
+    # ------------------------------------------------------------------
+    # UI: pellet tool button
+    # ------------------------------------------------------------------
+    _create_pellet_button(world, resources, logical_w, logical_h)
 
     return Engine(world=world, scheduler=scheduler, resources=resources)

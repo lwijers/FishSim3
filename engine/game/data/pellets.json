@@ -5,8 +5,12 @@
     "color": [210, 180, 90],
     "sprite_id": "pellet",
     "falling": {
-      "gravity": 500.0,
-      "terminal_velocity": 400.0,
+      "gravity": 100.0,
+      "terminal_velocity": 160.0,
+      "wobble_amplitude_range": [8.0, 18.0],
+      "wobble_frequency_range": [0.6, 1.2],
+      "wobble_phase_range": [0.0, 6.28318],
+      "wobble_time_range": [0.0, 2.0],
       "stop_on_floor": true
     }
   }

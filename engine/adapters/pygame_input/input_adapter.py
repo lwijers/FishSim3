@@ -5,7 +5,7 @@ import pygame
 
 from engine.app.constants import FALLBACK_SCREEN_SIZE
 from engine.resources import ResourceStore
-from engine.game.events.input_events import ClickWorld, ClickUI, Scroll
+from engine.game.events.input_events import ClickWorld, ClickUI, Scroll, PointerMove
 
 class InputAdapter:
     """
@@ -43,14 +43,19 @@ class InputAdapter:
         return float(lx), float(ly)
 
     def handle_event(self, event: pygame.event.Event) -> None:
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # left
+        if event.type == pygame.MOUSEBUTTONUP:
+            if event.button in (1, 2, 3):  # left/middle/right
                 logical = self._to_logical(event.pos)
                 if logical:
                     x, y = logical
-                    self.bus.publish(ClickWorld(x=x, y=y))
+                    self.bus.publish(ClickWorld(x=x, y=y, button=event.button))
             elif event.button in (4, 5):  # wheel
                 delta = 1.0 if event.button == 4 else -1.0
                 self.bus.publish(Scroll(delta=delta))
         elif event.type == pygame.MOUSEWHEEL:
             self.bus.publish(Scroll(delta=float(event.y)))
+        elif event.type == pygame.MOUSEMOTION:
+            logical = self._to_logical(event.pos)
+            if logical:
+                x, y = logical
+                self.bus.publish(PointerMove(x=x, y=y))

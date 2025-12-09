@@ -1,8 +1,12 @@
 {
   "_version": 1,
   "defaults": {
-    "gravity": 500.0,
-    "terminal_velocity": 400.0,
+    "gravity": 300.0,
+    "terminal_velocity": 200.0,
+    "wobble_amplitude": 20.0,
+    "wobble_frequency": 0.7,
+    "wobble_phase": 0.0,
+    "wobble_time_range": [0.0, 1.5],
     "stop_on_floor": true
   }
 }

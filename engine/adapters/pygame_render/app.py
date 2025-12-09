@@ -80,6 +80,7 @@ class PygameApp:
         for sprite_id, filename in (
             ("goldfish", "sprites/goldfish.png"),
             ("debug_fish", "debug_fish.png"),
+            ("pellet", "sprites/pellet.png"),
         ):
             try:
                 assets.load_image(sprite_id, filename)

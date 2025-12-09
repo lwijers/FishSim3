@@ -2,5 +2,22 @@
   "_version": 1,
   "colors": {
     "background": [30, 40, 90]
+  },
+  "buttons": {
+    "palette": {
+      "inactive": [42, 82, 110],
+      "active": [20, 160, 210],
+      "hover": [70, 130, 180],
+      "border": [20, 40, 60]
+    },
+    "border_width": 3,
+    "corner_radius": 12,
+    "pellet_button": {
+      "size": 64.0,
+      "padding": 12.0,
+      "offset_x": 16.0,
+      "offset_bottom": 16.0,
+      "icon_size": 32.0
+    }
   }
 }

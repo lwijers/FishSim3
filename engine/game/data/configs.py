@@ -16,3 +16,17 @@ def load_ui_config() -> Dict[str, Any]:
     UI theme configuration: colors, fonts, etc.
     """
     return load_json("ui.json")
+
+
+def load_pellet_config() -> Dict[str, Any]:
+    """
+    Pellet defaults: size, color, sprite_id.
+    """
+    return load_json("pellets.json")
+
+
+def load_falling_config() -> Dict[str, Any]:
+    """
+    Global defaults for falling behaviour (gravity, terminal velocity).
+    """
+    return load_json("falling.json")

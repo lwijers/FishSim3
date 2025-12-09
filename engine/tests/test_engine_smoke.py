@@ -1,4 +1,3 @@
-# tests/test_engine_smoke.py
 from __future__ import annotations
 
 from dataclasses import dataclass

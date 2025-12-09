@@ -1,4 +1,5 @@
 from __future__ import annotations
+import random
 from typing import Mapping, Any, Iterable
 
 from engine.ecs import World, EntityId
@@ -12,6 +13,7 @@ def create_pellet_cmd(
     y: float,
     tank_eid: EntityId,
     pellet_cfg: Mapping[str, Any] | None = None,
+    rng: random.Random | None = None,
 ) -> CreateEntityCmd:
     """
     Build a queued entity command for a pellet at logical coords (x, y).
@@ -21,6 +23,15 @@ def create_pellet_cmd(
       - color: [r, g, b]
       - sprite_id: str
     """
+    def _pick(cfg: Mapping[str, Any], key: str, default=None):
+        range_key = f"{key}_range"
+        if range_key in cfg:
+            lo, hi = cfg[range_key]
+            return (rng or random).uniform(float(lo), float(hi))
+        if key in cfg:
+            return cfg[key]
+        return default
+
     cfg = pellet_cfg or {}
     size = float(cfg.get("size", 12.0))
     color_val: Iterable[Any] = cfg.get("color", (0, 0, 0))
@@ -30,6 +41,10 @@ def create_pellet_cmd(
     falling = Falling(
         gravity=fall_cfg.get("gravity"),
         terminal_velocity=fall_cfg.get("terminal_velocity"),
+        wobble_amplitude=_pick(fall_cfg, "wobble_amplitude"),
+        wobble_frequency=_pick(fall_cfg, "wobble_frequency"),
+        wobble_phase=_pick(fall_cfg, "wobble_phase", 0.0),
+        wobble_time=float(_pick(fall_cfg, "wobble_time", 0.0)),
         stop_on_floor=bool(fall_cfg.get("stop_on_floor", True)),
     )
 

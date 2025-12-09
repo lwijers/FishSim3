@@ -10,6 +10,9 @@ from .brain import Brain
 from .movement_intent import MovementIntent
 from .sprite_ref import SpriteRef
 from .pellet import Pellet
+from .falling import Falling
+from .ui_button import UIButton
+from .ui_hitbox import UIHitbox
 
 __all__ = [
     "Position",
@@ -23,4 +26,7 @@ __all__ = [
     "MovementIntent",
     "SpriteRef",
     "Pellet",
+    "Falling",
+    "UIButton",
+    "UIHitbox",
 ]
