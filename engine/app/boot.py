@@ -23,6 +23,7 @@ from engine.app.constants import (
     DEFAULT_TANK_ID,
     DEFAULT_WINDOW_SIZE,
 )
+from engine.game.systems import MovementSystem, RectRenderSystem, FishFSMSystem, SpriteRenderSystem
 
 @dataclass
 class Engine:
@@ -58,7 +59,7 @@ def _populate_debug_fish(
     """
     debug_cfg = tank_def.get("debug_spawn", {})
     count = int(debug_cfg.get("count", 8))
-    margin = float(debug_cfg.get("margin", 50.0))
+    margin = max(0.0, float(debug_cfg.get("margin", 50.0)))
 
     # Get the tank's screen rect from its TankBounds component
     bounds_store = world.get_components(TankBounds)
@@ -68,11 +69,21 @@ def _populate_debug_fish(
         top = float(bounds.y)
         right = float(bounds.x + bounds.width)
         bottom = float(bounds.y + bounds.height)
+        width = right - left
+        height = bottom - top
     else:
         # Fallback if something went wrong; shouldn't normally happen.
         default_w, default_h = DEFAULT_WINDOW_SIZE
         left, top = 0.0, 0.0
         right, bottom = float(default_w), float(default_h)
+        width = right - left
+        height = bottom - top
+
+    # Ensure the spawn area is valid even if a config margin is too large.
+    if width <= 0.0 or height <= 0.0:
+        return
+    max_margin = max(0.0, min(width, height) / 2.0 - 1.0)
+    margin = min(margin, max_margin)
 
     # Spawn within the tank rect, keeping a configurable margin from edges.
     for _ in range(count):
@@ -144,31 +155,50 @@ def build_engine() -> Engine:
 
     fsm_sys = FishFSMSystem(resources)
     move_sys = MovementSystem(resources)
-    render_sys = RectRenderSystem(resources)
+    rect_render_sys = RectRenderSystem(resources)
+    sprite_render_sys = SpriteRenderSystem(resources)
 
-    # Order matters: FSM should run before MovementSystem in the logic phase.
+    # Order matters:
+    # - FSM before Movement in logic
+    # - RectRenderSystem clears & presents
+    # - SpriteRenderSystem draws on top (no clear/present)
     scheduler.add_system(fsm_sys, phase="logic")
     scheduler.add_system(move_sys, phase="logic")
-    scheduler.add_system(render_sys, phase="render")
+    scheduler.add_system(rect_render_sys, phase="render")
+    scheduler.add_system(sprite_render_sys, phase="render")
 
     # ------------------------------------------------------------------
     # Create initial tank
     # ------------------------------------------------------------------
-    tanks_map = tank_cfg["tanks"]
-    starting_tank_id = tank_cfg.get("starting_tank_id", DEFAULT_TANK_ID)
-    tank_def = tanks_map[starting_tank_id]
+    tanks_map = tank_cfg.get("tanks") or {}
+    if not tanks_map:
+        raise ValueError("tanks.json must define at least one tank in 'tanks'.")
 
-    bounds = tank_def["bounds"]
+    starting_tank_id = tank_cfg.get("starting_tank_id", DEFAULT_TANK_ID)
+    tank_def = tanks_map.get(starting_tank_id)
+    if tank_def is None:
+        # Fallback to DEFAULT_TANK_ID if present, otherwise the first entry.
+        fallback_id = DEFAULT_TANK_ID if DEFAULT_TANK_ID in tanks_map else next(iter(tanks_map))
+        starting_tank_id = fallback_id
+        tank_def = tanks_map[starting_tank_id]
+
+    bounds = tank_def.get("bounds")
+    if not (isinstance(bounds, (list, tuple)) and len(bounds) == 4):
+        raise ValueError(f"Tank {starting_tank_id!r} is missing a 4-element 'bounds' list.")
     x, y, width, height = (
         float(bounds[0]),
         float(bounds[1]),
         float(bounds[2]),
         float(bounds[3]),
     )
+    max_fish = int(tank_def.get("max_fish", 0))
+    if max_fish <= 0:
+        raise ValueError(f"Tank {starting_tank_id!r} must define max_fish > 0.")
+
     tank_eid = create_tank(
         world,
         tank_id=starting_tank_id,
-        max_fish=int(tank_def["max_fish"]),
+        max_fish=max_fish,
         x=x,
         y=y,
         width=width,

@@ -12,8 +12,10 @@ from engine.game.components import (
     Fish,
     Brain,
     MovementIntent,
+    SpriteRef,
 )
 from engine.game.data.jsonio import load_json
+
 
 SpeciesConfig = Dict[str, Any]
 SpeciesConfigMap = Dict[str, SpeciesConfig]
@@ -22,6 +24,7 @@ SpeciesConfigMap = Dict[str, SpeciesConfig]
 def load_species_config() -> SpeciesConfigMap:
     """
     Load species.json and return the 'species' dict.
+
     Structure of the json is:
       { "_version": 1, "species": { "debug_fish": { ... } } }
     """
@@ -45,6 +48,7 @@ def create_fish(
       - Position
       - Velocity (starts at 0; FSM + MovementIntent will drive it)
       - RectSprite (width/height/color from config)
+      - SpriteRef (optional: if sprite_id present in config)
       - Fish (species_id)
       - Brain (FSM state)
       - MovementIntent (AI output)
@@ -54,12 +58,25 @@ def create_fish(
     width = float(spec["width"])
     height = float(spec["height"])
     color = tuple(spec["color"])  # [r, g, b] -> (r, g, b)
+    sprite_id = spec.get("sprite_id")  # optional
 
     eid = world.create_entity()
+
     world.add_component(eid, Position(x=x, y=y))
+
     # Start with zero velocity; AI will fill in MovementIntent.
     world.add_component(eid, Velocity(vx=0.0, vy=0.0))
+
+    # Keep the old RectSprite for debug tests / fallback rendering
     world.add_component(eid, RectSprite(width=width, height=height, color=color))
+
+    # Optional sprite reference (uses same logical width/height)
+    if sprite_id:
+        world.add_component(
+            eid,
+            SpriteRef(sprite_id=sprite_id, width=width, height=height),
+        )
+
     world.add_component(eid, Fish(species_id=species_id))
     world.add_component(eid, Brain())
     world.add_component(eid, MovementIntent())

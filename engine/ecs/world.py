@@ -1,7 +1,7 @@
 # engine/ecs/world.py
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, Type, TypeVar, Tuple, List, Any
+from typing import Dict, Type, TypeVar, Iterable, Tuple, List, Any
 
 from .commands import CreateEntityCmd, DestroyEntityCmd
 
@@ -98,42 +98,31 @@ class World:
     # Commands
     # ------------------------------------------------------------------
     def queue_command(self, cmd: Any) -> None:
-        """
-        Queue a command to be applied later.
-        Typical commands: CreateEntityCmd, DestroyEntityCmd.
-        """
+        """Queue a command to be applied later (CreateEntityCmd, DestroyEntityCmd)."""
         self._command_queue.append(cmd)
 
     def flush_commands(self) -> None:
-        """
-        Apply all queued commands. Should be called by the scheduler
-        in a predictable phase (e.g. 'post_update').
+        """Apply all queued commands (create/destroy entities).
 
-        Uses the canonical CreateEntityCmd / DestroyEntityCmd from
-        engine.ecs.commands.
+        This should be called exactly once per frame by the Scheduler,
+        typically after the 'post_update' phase.
         """
         while self._command_queue:
             cmd = self._command_queue.pop(0)
-
             if isinstance(cmd, CreateEntityCmd):
                 self._apply_create_entity(cmd)
-
             elif isinstance(cmd, DestroyEntityCmd):
                 # canonical field name is 'entity_id'
                 self.destroy_entity(EntityId(cmd.entity_id))
-
             else:
                 raise TypeError(f"Unknown command type: {type(cmd)!r}")
 
     def _apply_create_entity(self, cmd: CreateEntityCmd) -> EntityId:
-        """
-        Internal helper to create an entity and attach the components from
-        CreateEntityCmd.components.
+        """Create a new entity and attach all components from cmd.components.
 
-        CreateEntityCmd.components is:
-            Dict[ComponentType, component_instance]
-        but World.add_component infers the type from the instance, so we
-        only care about the values.
+        cmd.components is a dict: {ComponentType: component_instance}.
+        We only care about the component instances; add_component() infers
+        the type from each instance.
         """
         eid = self.create_entity()
         for component in cmd.components.values():

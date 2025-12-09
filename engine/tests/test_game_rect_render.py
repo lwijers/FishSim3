@@ -2,8 +2,8 @@
 from __future__ import annotations
 from engine.ecs import World
 from engine.resources import ResourceStore
-from engine.game.components import Position, RectSprite
-from engine.game.systems import RectRenderSystem
+from engine.game.components import Position, RectSprite, SpriteRef
+from engine.game.systems import RectRenderSystem, SpriteRenderSystem
 
 
 class FakeRenderer:
@@ -16,6 +16,7 @@ class FakeRenderer:
         self.cleared = False
         self.presented = False
         self.draw_calls = []  # list of (x, y, w, h, color, outline_width)
+        self.image_calls = []  # list of (image, x, y, w, h)
 
     def clear(self) -> None:
         self.cleared = True
@@ -25,6 +26,9 @@ class FakeRenderer:
 
     def draw_rect(self, x, y, w, h, color, outline_width=0) -> None:
         self.draw_calls.append((x, y, w, h, color, outline_width))
+
+    def draw_image(self, image, x, y, w, h) -> None:
+        self.image_calls.append((image, x, y, w, h))
 
 
 def _make_world_and_render_system(
@@ -50,7 +54,7 @@ def test_rect_render_system_draws_rectangles_no_scaling() -> None:
     When logical_size == screen_size, RectRenderSystem should:
       - clear the renderer
       - draw one rect per entity with Position + RectSprite
-      - present the frame
+      - present the frame (no sprites present)
       - pass coordinates through 1:1 (no scaling)
     """
     logical_size = (800, 600)
@@ -196,3 +200,73 @@ def test_rect_render_system_letterboxes_to_preserve_aspect_ratio() -> None:
     assert h_px == 57.6
     assert color == (255, 255, 255)
     assert outline_width == 0
+
+
+def test_rect_render_system_presents_when_no_sprites_exist() -> None:
+    """
+    If there are no SpriteRef components in the world, RectRenderSystem should
+    both draw and present the frame.
+    """
+    logical_size = (640, 480)
+    screen_size = (640, 480)
+
+    world, resources, render_sys, fake_renderer = _make_world_and_render_system(
+        logical_size=logical_size,
+        screen_size=screen_size,
+    )
+
+    eid = world.create_entity()
+    world.add_component(eid, Position(x=5.0, y=6.0))
+    world.add_component(eid, RectSprite(width=10.0, height=20.0, color=(1, 2, 3)))
+
+    render_sys.update(world, dt=0.016)
+
+    assert fake_renderer.cleared is True
+    assert fake_renderer.presented is True
+    assert len(fake_renderer.draw_calls) == 1
+    assert len(fake_renderer.image_calls) == 0
+
+
+def test_sprites_skip_rects_and_present_via_sprite_system() -> None:
+    """
+    Entities with SpriteRef should not be drawn as rectangles, and presentation
+    should be deferred to the SpriteRenderSystem.
+    """
+    logical_size = (800, 600)
+    screen_size = (800, 600)
+
+    world = World()
+    resources = ResourceStore()
+    fake_renderer = FakeRenderer()
+
+    resources.set("renderer", fake_renderer)
+    resources.set("logical_size", logical_size)
+    resources.set("screen_size", screen_size)
+
+    class FakeAssets:
+        def has_image(self, sprite_id: str) -> bool:
+            return True
+
+        def get_image(self, sprite_id: str):
+            return f"img:{sprite_id}"
+
+    resources.set("assets", FakeAssets())
+
+    rect_sys = RectRenderSystem(resources)
+    sprite_sys = SpriteRenderSystem(resources)
+
+    eid = world.create_entity()
+    world.add_component(eid, Position(x=10.0, y=15.0))
+    world.add_component(eid, RectSprite(width=30.0, height=40.0, color=(9, 9, 9)))
+    world.add_component(eid, SpriteRef(sprite_id="goldfish", width=30.0, height=40.0))
+
+    # Rect render should clear, skip draw_rect (because SpriteRef present), not present
+    rect_sys.update(world, dt=0.016)
+    assert fake_renderer.cleared is True
+    assert fake_renderer.draw_calls == []
+    assert fake_renderer.presented is False
+
+    # Sprite render should draw the image and present once
+    sprite_sys.update(world, dt=0.016)
+    assert len(fake_renderer.image_calls) == 1
+    assert fake_renderer.presented is True

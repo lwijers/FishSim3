@@ -8,6 +8,7 @@ from .in_tank import InTank
 from .tank_bounds import TankBounds
 from .brain import Brain
 from .movement_intent import MovementIntent
+from .sprite_ref import SpriteRef
 
 __all__ = [
     "Position",
@@ -19,4 +20,5 @@ __all__ = [
     "TankBounds",
     "Brain",
     "MovementIntent",
+    "SpriteRef",
 ]

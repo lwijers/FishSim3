@@ -1,37 +1,36 @@
-# engine/game/systems/rect_render_system.py
+# engine/game/systems/sprite_render_system.py
 from __future__ import annotations
+
 from engine.ecs import System, World
 from engine.resources import ResourceStore
 from engine.app.constants import FALLBACK_SCREEN_SIZE
 from engine.game.components.position import Position
-from engine.game.components.rect_sprite import RectSprite
 from engine.game.components.sprite_ref import SpriteRef
 
 
-class RectRenderSystem(System):
+class SpriteRenderSystem(System):
     """
-    Render all RectSprite entities as colored rectangles.
+    Render all entities that have Position + SpriteRef as sprites.
 
     Logical space:
-      - Position.x/y and RectSprite.width/height are in *logical* units
-        (e.g. 0..1280, 0..720).
+      - Position.x/y and SpriteRef.width/height are in logical units.
 
     Render space:
-      - We scale logical space uniformly to fit inside the window while
-        preserving aspect ratio (no stretching).
-      - The game view is letterboxed (centered) if the window aspect
-        ratio doesn't match the logical aspect ratio.
+      - Uses the same uniform scaling + letterboxing as RectRenderSystem.
+      - Does NOT clear or present; we assume some other system (RectRenderSystem)
+        owns the frame lifecycle. This lets sprites draw on top of rectangles.
     """
+
     phase = "render"
 
     def update(self, world: World, dt: float) -> None:
         resources: ResourceStore = self.resources  # type: ignore[assignment]
 
-        renderer = resources.try_get("renderer")
-        if renderer is None:
+        renderer = resources.try_get("renderer", None)
+        assets = resources.try_get("assets", None)
+        if renderer is None or assets is None:
+            # No renderer or assets yet (e.g. tests, headless) -> nothing to do.
             return
-
-        sprite_ref_store = world.get_components(SpriteRef)
 
         # Current window size (updated by PygameApp on resize)
         screen_w, screen_h = resources.try_get("screen_size", FALLBACK_SCREEN_SIZE)
@@ -46,7 +45,6 @@ class RectRenderSystem(System):
             logical_h = screen_h
 
         # --- UNIFORM SCALE (keep proportions) ---
-        # scale = min(scale_x, scale_y)
         scale_x = screen_w / logical_w
         scale_y = screen_h / logical_h
         scale = min(scale_x, scale_y)
@@ -59,23 +57,19 @@ class RectRenderSystem(System):
         offset_x = (screen_w - render_w) / 2.0
         offset_y = (screen_h - render_h) / 2.0
 
-        # Clear whole screen first
-        renderer.clear()
-
-        # Draw all entities that have Position + RectSprite
-        drew_any = False
-        for eid, pos, sprite in world.view(Position, RectSprite):
-            # If this entity also has a SpriteRef, skip drawing the fallback rect.
-            if eid in sprite_ref_store:
+        # Draw all entities that have Position + SpriteRef
+        for eid, pos, sprite in world.view(Position, SpriteRef):
+            if not assets.has_image(sprite.sprite_id):
                 continue
+
+            image = assets.get_image(sprite.sprite_id)
+
             x_px = offset_x + pos.x * scale
             y_px = offset_y + pos.y * scale
             w_px = sprite.width * scale
             h_px = sprite.height * scale
-            renderer.draw_rect(x_px, y_px, w_px, h_px, sprite.color)
-            drew_any = True
 
-        # If sprites are present in the world, let SpriteRenderSystem own present().
-        # Otherwise, present here for pure-rect scenes/tests.
-        if drew_any and not sprite_ref_store:
-            renderer.present()
+            renderer.draw_image(image, x_px, y_px, w_px, h_px)
+
+        # Present the composed frame after all sprites have been drawn.
+        renderer.present()

@@ -1,9 +1,12 @@
 # engine/adapters/pygame_render/app.py
 from __future__ import annotations
 
+from pathlib import Path
+
 import pygame
 
 from engine.adapters.pygame_render.renderer import Renderer
+from engine.adapters.asset_loader import Assets
 from engine.app.constants import (
     FPS,
     DEFAULT_WINDOW_SIZE,
@@ -15,11 +18,11 @@ from engine.app.constants import (
 class PygameApp:
     """
     Thin Pygame application wrapper.
+
     Responsibilities:
-      - Initialize Pygame and create the window.
-      - Attach a Renderer to the engine's ResourceStore.
-      - Drive the main loop: poll events, call engine.update and engine.render.
-      - Handle window resize and propagate new size to resources.
+      - Initialize pygame + window
+      - Hook Renderer + screen_size into the engine resources
+      - Run the main loop and forward dt to engine.update/render
     """
 
     def __init__(
@@ -32,15 +35,22 @@ class PygameApp:
         self.engine = engine
 
         default_w, default_h = DEFAULT_WINDOW_SIZE
-        self.width = width if width is not None else default_w
-        self.height = height if height is not None else default_h
-        self.title = title if title is not None else DEFAULT_WINDOW_TITLE
+        self.width = int(width or default_w)
+        self.height = int(height or default_h)
+        self.title = title or DEFAULT_WINDOW_TITLE
 
-        self._running = False
+        self.screen: pygame.Surface | None = None
+        self.clock: pygame.time.Clock | None = None
+        self._running: bool = False
 
-        # --- Pygame init & window creation ---
+        self._init_pygame()
+
+    # ------------------------------------------------------------------
+    # Init & resize
+    # ------------------------------------------------------------------
+    def _init_pygame(self) -> None:
         pygame.init()
-        # Make window resizable
+
         self.screen = pygame.display.set_mode(
             (self.width, self.height),
             pygame.RESIZABLE,
@@ -53,30 +63,50 @@ class PygameApp:
         bg_color = tuple(
             ui_cfg.get("colors", {}).get("background", DEFAULT_BG_COLOR)
         )
-
         renderer = Renderer(self.screen, bg_color=bg_color)
         self.engine.resources.set("renderer", renderer)
         self.engine.resources.set("screen_size", (self.width, self.height))
 
+        # --- Attach Assets as a resource (images + sounds) ---
+        # Base path is "assets" by default; adjust if your folder differs.
+        assets = Assets(base_path=Path("assets"))
+
+        # Try to load known sprites; skip silently if missing during dev/tests.
+        for sprite_id, filename in (
+            ("goldfish", "sprites/goldfish.png"),
+            ("debug_fish", "debug_fish.png"),
+        ):
+            try:
+                assets.load_image(sprite_id, filename)
+            except Exception:
+                # Missing assets are ok in headless/test runs.
+                pass
+
+        self.engine.resources.set("assets", assets)
+
     def _handle_resize(self, event: pygame.event.Event) -> None:
-        """Handle VIDEORESIZE: recreate window, update renderer + resources."""
-        self.width, self.height = event.size
-        # Recreate the display surface with RESIZABLE flag
+        """Handle VIDEORESIZE: recreate the window surface + update resources."""
+        self.width, self.height = event.w, event.h
+
         self.screen = pygame.display.set_mode(
             (self.width, self.height),
             pygame.RESIZABLE,
         )
-        # Update renderer to draw to the new surface
-        renderer: Renderer = self.engine.resources.get("renderer")
+        pygame.display.set_caption(self.title)
+
+        # Update renderer's surface and screen_size resource
+        renderer = self.engine.resources.get("renderer")
         renderer.screen = self.screen
-        # Update screen_size resource so systems see the new size
         self.engine.resources.set("screen_size", (self.width, self.height))
 
+    # ------------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------------
     def run(self) -> None:
-        """Main loop. ESC or window close will exit."""
         self._running = True
+        assert self.clock is not None
+
         while self._running:
-            # Cap at FPS, get dt in seconds
             dt_ms = self.clock.tick(FPS)
             dt = dt_ms / 1000.0
 
@@ -87,7 +117,6 @@ class PygameApp:
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     self._running = False
                 elif event.type == pygame.VIDEORESIZE:
-                    # User resized the window
                     self._handle_resize(event)
 
             # --- Engine update & render ---

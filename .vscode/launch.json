@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FishSim3",
+      "type": "python",
+      "request": "launch",
+
+      // This is the important part:
+      // run "python -m engine.app.main"
+      "module": "engine.app.main",
+
+      // Run from the project root (the folder you opened)
+      "cwd": "${workspaceFolder}",
+
+      // Optional: show a debug console
+      "console": "integratedTerminal"
+    }
+  ]
+}
