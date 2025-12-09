@@ -13,3 +13,6 @@ venv/
 build/
 dist/
 *.egg-info/
+# Local export helper
+/export_script.py
+/project_export.txt
