@@ -1,0 +1,8 @@
+{
+  "_version": 1,
+  "defaults": {
+    "gravity": 500.0,
+    "terminal_velocity": 400.0,
+    "stop_on_floor": true
+  }
+}

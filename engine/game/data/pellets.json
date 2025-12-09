@@ -1,0 +1,13 @@
+{
+  "_version": 1,
+  "pellet": {
+    "size": 12.0,
+    "color": [210, 180, 90],
+    "sprite_id": "pellet",
+    "falling": {
+      "gravity": 500.0,
+      "terminal_velocity": 400.0,
+      "stop_on_floor": true
+    }
+  }
+}
