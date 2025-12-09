@@ -1,0 +1,12 @@
+{
+  "_version": 1,
+  "window": {
+    "width": 1280,
+    "height": 720,
+    "title": "FishSim3 MVP"
+  },
+  "logical_size": {
+    "width": 1280,
+    "height": 720
+  }
+}

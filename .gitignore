@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual envs
+.venv/
+venv/
+
+# PyCharm
+.idea/
+
+# Build / dist
+build/
+dist/
+*.egg-info/

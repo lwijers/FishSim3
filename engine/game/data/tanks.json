@@ -1,0 +1,22 @@
+{
+  "_version": 1,
+  "starting_tank_id": "tank_1",
+  "tanks": {
+    "tank_1": {
+      "max_fish": 20,
+      "bounds": [0.0, 0.0, 1280.0, 720.0],
+      "debug_spawn": {
+        "count": 8,
+        "margin": 50.0
+      }
+    },
+    "small_test_tank": {
+      "max_fish": 3,
+      "bounds": [100.0, 50.0, 200.0, 200.0],
+      "debug_spawn": {
+        "count": 2,
+        "margin": 10.0
+      }
+    }
+  }
+}
