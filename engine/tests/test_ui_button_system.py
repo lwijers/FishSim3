@@ -4,7 +4,7 @@ import random
 from engine.ecs import World
 from engine.resources import ResourceStore
 from engine.events import EventBus
-from engine.game.components import Position, UIHitbox, UIButton, RectSprite
+from engine.game.components import Position, UIHitbox, UIButton, RectSprite, UIElement
 from engine.game.events.input_events import ClickWorld, PointerMove
 from engine.game.systems import UIButtonSystem
 
@@ -14,8 +14,12 @@ def _make_button_world(resources: ResourceStore):
     eid = world.create_entity()
     world.add_component(eid, Position(x=0.0, y=0.0))
     world.add_component(eid, UIHitbox(width=50.0, height=50.0))
+    world.add_component(eid, UIElement(width=50.0, height=50.0, style="test", element_id="btn"))
     world.add_component(eid, UIButton(tool_id="pellet", active=False))
     world.add_component(eid, RectSprite(width=50.0, height=50.0, color=(1, 1, 1)))
+    styles = {"test": resources.try_get("ui_config", {}).get("styles", {}).get("test", {})}
+    resources.set("ui_styles", styles)
+    resources.set("ui_styles_by_eid", {eid: "test"})
     return world
 
 
@@ -23,7 +27,7 @@ def test_ui_button_toggle_and_active_tool() -> None:
     resources = ResourceStore()
     bus = EventBus()
     resources.register("events", bus)
-    resources.set("ui_config", {"buttons": {"palette": {"inactive": [0, 0, 0], "active": [10, 10, 10]}}})
+    resources.set("ui_config", {"styles": {"test": {"inactive": [0, 0, 0], "active": [10, 10, 10], "hover": [5, 5, 5]}}})
 
     world = _make_button_world(resources)
     sys = UIButtonSystem(resources)
@@ -51,7 +55,7 @@ def test_right_click_anywhere_deactivates() -> None:
     resources = ResourceStore()
     bus = EventBus()
     resources.register("events", bus)
-    resources.set("ui_config", {"buttons": {"palette": {"inactive": [0, 0, 0], "active": [10, 10, 10]}}})
+    resources.set("ui_config", {"styles": {"test": {"inactive": [0, 0, 0], "active": [10, 10, 10], "hover": [5, 5, 5]}}})
 
     world = _make_button_world(resources)
     sys = UIButtonSystem(resources)
@@ -74,7 +78,7 @@ def test_hover_color_applies_when_inactive() -> None:
     resources = ResourceStore()
     bus = EventBus()
     resources.register("events", bus)
-    resources.set("ui_config", {"buttons": {"palette": {"inactive": [0, 0, 0], "active": [10, 10, 10], "hover": [5, 5, 5]}}})
+    resources.set("ui_config", {"styles": {"test": {"inactive": [0, 0, 0], "active": [10, 10, 10], "hover": [5, 5, 5]}}})
 
     world = _make_button_world(resources)
     sys = UIButtonSystem(resources)

@@ -3,7 +3,7 @@ from typing import List, Tuple
 from engine.ecs import System, World
 from engine.ecs.commands import CreateEntityCmd
 from engine.resources import ResourceStore
-from engine.game.components import Position, RectSprite, InTank, TankBounds, Tank, UIHitbox
+from engine.game.components import Position, RectSprite, InTank, TankBounds, Tank, UIHitbox, UIElement
 from engine.game.components.pellet import Pellet
 from engine.game.events.input_events import ClickWorld
 from engine.game.factories.pellet_factory import create_pellet_cmd
@@ -41,9 +41,18 @@ class PlacementSystem(System):
 
         for evt in events:
             # Ignore clicks that hit UI elements
+            hit_ui = False
             for _, pos_ui, hitbox_ui in world.view(Position, UIHitbox):
                 if pos_ui.x <= evt.x <= pos_ui.x + hitbox_ui.width and pos_ui.y <= evt.y <= pos_ui.y + hitbox_ui.height:
+                    hit_ui = True
                     break
+            if not hit_ui:
+                for _, pos_ui, ui_elem in world.view(Position, UIElement):
+                    if pos_ui.x <= evt.x <= pos_ui.x + ui_elem.width and pos_ui.y <= evt.y <= pos_ui.y + ui_elem.height:
+                        hit_ui = True
+                        break
+            if hit_ui:
+                continue
             else:
                 # Only spawn if pellet tool is active
                 if self.resources.try_get("active_tool") != "pellet":

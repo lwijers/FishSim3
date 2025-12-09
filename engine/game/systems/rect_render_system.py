@@ -6,6 +6,7 @@ from engine.app.constants import FALLBACK_SCREEN_SIZE
 from engine.game.components.position import Position
 from engine.game.components.rect_sprite import RectSprite
 from engine.game.components.sprite_ref import SpriteRef
+from engine.game.components.ui_element import UIElement
 
 
 class RectRenderSystem(System):
@@ -64,6 +65,8 @@ class RectRenderSystem(System):
 
         # Borders metadata from UI (optional)
         borders = resources.try_get("ui_borders", {})
+        styles = resources.try_get("ui_styles", {})
+        ui_elem_store = world.get_components(UIElement)
 
         # Draw all entities that have Position + RectSprite
         drew_any = False
@@ -76,6 +79,16 @@ class RectRenderSystem(System):
             w_px = sprite.width * scale
             h_px = sprite.height * scale
             border = borders.get(eid)
+            if border is None:
+                ui_elem = ui_elem_store.get(eid)
+                style_key = ui_elem.style if ui_elem else None
+                style = styles.get(style_key, {}) if style_key else {}
+                if "border" in style or "border_width" in style or "corner_radius" in style:
+                    border = (
+                        tuple(style.get("border", (20, 40, 60))),
+                        int(style.get("border_width", 0)),
+                        int(style.get("corner_radius", 0)),
+                    )
             if border:
                 border_color, border_width, corner_radius = border
                 renderer.draw_rect(x_px, y_px, w_px, h_px, border_color, outline_width=border_width, border_radius=corner_radius)

@@ -3,21 +3,29 @@
   "colors": {
     "background": [30, 40, 90]
   },
-  "buttons": {
-    "palette": {
+  "styles": {
+    "button_tool": {
       "inactive": [42, 82, 110],
       "active": [20, 160, 210],
       "hover": [70, 130, 180],
-      "border": [20, 40, 60]
-    },
-    "border_width": 3,
-    "corner_radius": 12,
-    "pellet_button": {
-      "size": 64.0,
-      "padding": 12.0,
-      "offset_x": 16.0,
-      "offset_bottom": 16.0,
-      "icon_size": 32.0
+      "border": [20, 40, 60],
+      "border_width": 3,
+      "corner_radius": 12
     }
-  }
+  },
+  "components": [
+    {
+      "id": "btn_pellet",
+      "type": "button",
+      "style": "button_tool",
+      "x": 16.0,
+      "bottom": 16.0,
+      "width": 64.0,
+      "height": 64.0,
+      "icon": { "sprite_id": "pellet", "size": 32.0 },
+      "tool": "pellet",
+      "exclusive_group": "tools",
+      "deactivate_on_right_click": true
+    }
+  ]
 }

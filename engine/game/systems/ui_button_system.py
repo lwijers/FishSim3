@@ -4,7 +4,7 @@ from typing import List
 from engine.ecs import System, World
 from engine.resources import ResourceStore
 from engine.game.events.input_events import ClickWorld, PointerMove
-from engine.game.components import Position, UIHitbox, UIButton, RectSprite
+from engine.game.components import Position, UIHitbox, UIButton, RectSprite, UIElement
 
 
 class UIButtonSystem(System):
@@ -22,16 +22,6 @@ class UIButtonSystem(System):
         bus.subscribe(ClickWorld, self._on_click)
         bus.subscribe(PointerMove, self._on_move)
 
-        ui_cfg = resources.try_get("ui_config", {})
-        buttons_cfg = ui_cfg.get("buttons", {})
-        palette = buttons_cfg.get("palette", {})
-        self._color_inactive = tuple(palette.get("inactive", (50, 90, 120)))
-        self._color_active = tuple(palette.get("active", (90, 170, 210)))
-        self._color_hover = tuple(palette.get("hover", self._color_active))
-        self._border_color = tuple(palette.get("border", (20, 40, 60)))
-        self._border_width = int(buttons_cfg.get("border_width", 2))
-        self._corner_radius = int(buttons_cfg.get("corner_radius", 8))
-
     def _on_click(self, evt: ClickWorld) -> None:
         self._pending.append(evt)
 
@@ -43,6 +33,22 @@ class UIButtonSystem(System):
         moves = self._moves
         self._pending = []
         self._moves = []
+        styles = self.resources.try_get("ui_styles", {})
+        ui_elem_store = world.get_components(UIElement)
+
+        def style_for_eid(eid):
+            ui_elem = ui_elem_store.get(eid)
+            style_key = ui_elem.style if ui_elem else None
+            return styles.get(style_key, {})
+
+        def color_for_state(eid, state: str):
+            style = style_for_eid(eid)
+            palette = {
+                "inactive": style.get("inactive", (50, 90, 120)),
+                "hover": style.get("hover", style.get("active", (90, 170, 210))),
+                "active": style.get("active", (90, 170, 210)),
+            }
+            return tuple(palette.get(state, palette["inactive"]))
 
         def deactivate_all():
             for eid, _, _, other_btn in world.view(Position, UIHitbox, UIButton):
@@ -50,22 +56,31 @@ class UIButtonSystem(System):
                 other_btn.hover = False
                 rect = world.get_components(RectSprite).get(eid)
                 if rect is not None:
-                    rect.color = self._color_inactive
+                    rect.color = color_for_state(eid, "inactive")
             self.resources.set("active_tool", None)
+
+        def apply_style(eid, button: UIButton):
+            rect = world.get_components(RectSprite).get(eid)
+            if rect is None:
+                return
+            if button.active:
+                rect.color = color_for_state(eid, "active")
+            elif button.hover:
+                rect.color = color_for_state(eid, "hover")
+            else:
+                rect.color = color_for_state(eid, "inactive")
 
         # Hover handling
         for move in moves:
             for eid, pos, hitbox, button in world.view(Position, UIHitbox, UIButton):
+                if not (pos.x <= move.x <= pos.x + hitbox.width and pos.y <= move.y <= pos.y + hitbox.height):
+                    button.hover = False
+                    apply_style(eid, button)
+                    continue
+
                 inside = pos.x <= move.x <= pos.x + hitbox.width and pos.y <= move.y <= pos.y + hitbox.height
                 button.hover = inside and not button.active
-                rect = world.get_components(RectSprite).get(eid)
-                if rect is not None:
-                    if button.active:
-                        rect.color = self._color_active
-                    elif button.hover:
-                        rect.color = self._color_hover
-                    else:
-                        rect.color = self._color_inactive
+                apply_style(eid, button)
 
         for evt in events:
             # Right-click anywhere should deactivate the current tool/buttons.
@@ -88,19 +103,19 @@ class UIButtonSystem(System):
                         if other_eid != eid:
                             other_btn.active = False
                             other_btn.hover = False
-                    self.resources.set("active_tool", button.tool_id)
+                    # Exclusive group handling
+                    if button.exclusive_group:
+                        for other_eid, _, _, other_btn in world.view(Position, UIHitbox, UIButton):
+                            if other_eid != eid and other_btn.exclusive_group == button.exclusive_group:
+                                other_btn.active = False
+                                other_btn.hover = False
+                                apply_style(other_eid, other_btn)
+                    if button.tool_id:
+                        self.resources.set("active_tool", button.tool_id)
                 else:
                     if self.resources.try_get("active_tool") == button.tool_id:
                         self.resources.set("active_tool", None)
                     button.hover = False
 
-                # Update visual state
-                rect = world.get_components(RectSprite).get(eid)
-                if rect is not None:
-                    if button.active:
-                        rect.color = self._color_active
-                    elif button.hover:
-                        rect.color = self._color_hover
-                    else:
-                        rect.color = self._color_inactive
+                apply_style(eid, button)
                 break

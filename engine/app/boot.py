@@ -14,11 +14,10 @@ from engine.game.factories import (
     create_tank,
     load_tank_config,
 )
-from engine.game.components import Position, RectSprite, UIHitbox, UIButton, SpriteRef
+from engine.game.components import Position, RectSprite, UIHitbox, UIButton, SpriteRef, UIElement
 from engine.game.rules import spawn_fish_in_tank_if_allowed
 from engine.game.components.tank_bounds import TankBounds
 from engine.game.data.configs import load_settings_config, load_ui_config, load_pellet_config, load_falling_config
-from engine.game.data.configs import load_pellet_config
 from engine.app.constants import (
     RNG_ROOT_SEED,
     RNG_MAX_INT,
@@ -34,6 +33,19 @@ from engine.game.systems import (
     FallingSystem,
     UIButtonSystem,
 )
+
+
+def _validate_ui_config(ui_cfg: dict) -> None:
+    styles = ui_cfg.get("styles", {})
+    comps = ui_cfg.get("components", [])
+    for comp in comps:
+        if "type" not in comp:
+            raise ValueError("UI component missing 'type'")
+        style_key = comp.get("style")
+        if style_key is not None and style_key not in styles:
+            raise ValueError(f"UI component {comp.get('id', comp['type'])!r} references unknown style {style_key!r}")
+        if "width" not in comp or "height" not in comp:
+            raise ValueError(f"UI component {comp.get('id', comp['type'])!r} must define width/height")
 
 @dataclass
 class Engine:
@@ -110,41 +122,49 @@ def _populate_debug_fish(
         )
 
 
-def _create_pellet_button(world: World, resources: ResourceStore, logical_w: float, logical_h: float) -> None:
-    """Create UI button entity for pellet tool + icon overlay."""
+def _create_ui_from_config(world: World, resources: ResourceStore, logical_w: float, logical_h: float) -> None:
     ui_cfg = resources.try_get("ui_config", {})
-    palette = ui_cfg.get("buttons", {}).get("palette", {})
-    inactive = tuple(palette.get("inactive", (42, 82, 110)))
-    border_color = tuple(palette.get("border", (20, 40, 60)))
-    border_width = int(ui_cfg.get("buttons", {}).get("border_width", 2))
-    corner_radius = int(ui_cfg.get("buttons", {}).get("corner_radius", 8))
-    pellet_btn_cfg = ui_cfg.get("buttons", {}).get("pellet_button", {})
-    size = float(pellet_btn_cfg.get("size", 64.0))
-    padding = float(pellet_btn_cfg.get("padding", 12.0))
-    offset_x = float(pellet_btn_cfg.get("offset_x", 16.0))
-    offset_bottom = float(pellet_btn_cfg.get("offset_bottom", 16.0))
-    icon_size = float(pellet_btn_cfg.get("icon_size", 32.0))
+    components = ui_cfg.get("components", [])
+    styles = ui_cfg.get("styles", {})
 
-    x = offset_x
-    y = max(0.0, logical_h - size - offset_bottom)
+    for comp in components:
+        ctype = comp.get("type")
+        style_key = comp.get("style")
+        if ctype == "button":
+            width = float(comp.get("width", 64.0))
+            height = float(comp.get("height", 64.0))
+            x = float(comp.get("x", 0.0))
+            y_val = comp.get("y")
+            bottom = comp.get("bottom")
+            if y_val is None:
+                bottom_val = float(bottom if bottom is not None else 0.0)
+                y = max(0.0, logical_h - height - bottom_val)
+            else:
+                y = float(y_val)
+            tool_id = comp.get("tool")
+            exclusive_group = comp.get("exclusive_group")
+            deactivate_on_right_click = bool(comp.get("deactivate_on_right_click", True))
+            icon_cfg = comp.get("icon", {})
+            icon_size = float(icon_cfg.get("size", 32.0))
+            icon_sprite = icon_cfg.get("sprite_id")
 
-    # Button background + hitbox + toggle state
-    btn_eid = world.create_entity()
-    world.add_component(btn_eid, Position(x=x, y=y))
-    world.add_component(btn_eid, RectSprite(width=size, height=size, color=inactive))
-    world.add_component(btn_eid, UIHitbox(width=size, height=size))
-    world.add_component(btn_eid, UIButton(tool_id="pellet", active=False))
-    # Border stored in RectSprite via outline color/width metadata on resources
-    borders = resources.try_get("ui_borders", {})
-    borders[btn_eid] = (border_color, border_width, corner_radius)
-    resources.set("ui_borders", borders)
+            btn_eid = world.create_entity()
+            world.add_component(btn_eid, Position(x=x, y=y))
+            color = tuple(styles.get(style_key, {}).get("inactive", (42, 82, 110)))
+            world.add_component(btn_eid, RectSprite(width=width, height=height, color=color))
+            world.add_component(btn_eid, UIHitbox(width=width, height=height))
+            world.add_component(btn_eid, UIElement(width=width, height=height, style=style_key, element_id=comp.get("id")))
+            world.add_component(btn_eid, UIButton(tool_id=tool_id, active=False, exclusive_group=exclusive_group, deactivate_on_right_click=deactivate_on_right_click))
 
-    # Icon overlay centered inside the button
-    icon_x = x + (size - icon_size) / 2.0
-    icon_y = y + (size - icon_size) / 2.0
-    icon_eid = world.create_entity()
-    world.add_component(icon_eid, Position(x=icon_x, y=icon_y))
-    world.add_component(icon_eid, SpriteRef(sprite_id="pellet", width=icon_size, height=icon_size))
+            if icon_sprite:
+                icon_x = x + (width - icon_size) / 2.0
+                icon_y = y + (height - icon_size) / 2.0
+                icon_eid = world.create_entity()
+                world.add_component(icon_eid, Position(x=icon_x, y=icon_y))
+                world.add_component(icon_eid, SpriteRef(sprite_id=icon_sprite, width=icon_size, height=icon_size))
+                world.add_component(icon_eid, UIElement(width=icon_size, height=icon_size, style=None, element_id=f"{comp.get('id')}_icon"))
+    # Store styles for renderers/systems
+    resources.set("ui_styles", styles)
 
 
 def build_engine() -> Engine:
@@ -165,6 +185,7 @@ def build_engine() -> Engine:
     ui_cfg = load_ui_config()
     resources.set("settings", settings)
     resources.set("ui_config", ui_cfg)
+    resources.set("ui_styles", ui_cfg.get("styles", {}))
 
     # Expose logical_size if configured; RectRenderSystem can fall back
     logical_cfg = settings.get("logical_size", {})
@@ -202,6 +223,8 @@ def build_engine() -> Engine:
 
     falling_cfg = load_falling_config()
     resources.set("falling_config", falling_cfg)
+    # Validate UI config components reference defined styles
+    _validate_ui_config(ui_cfg)
 
     # ------------------------------------------------------------------
     # World + scheduler + systems
@@ -277,8 +300,8 @@ def build_engine() -> Engine:
     _populate_debug_fish(world, species_cfg, tank_eid, tank_def, rng_spawns)
 
     # ------------------------------------------------------------------
-    # UI: pellet tool button
+    # UI from config
     # ------------------------------------------------------------------
-    _create_pellet_button(world, resources, logical_w, logical_h)
+    _create_ui_from_config(world, resources, logical_w, logical_h)
 
     return Engine(world=world, scheduler=scheduler, resources=resources)

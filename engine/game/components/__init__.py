@@ -13,6 +13,7 @@ from .pellet import Pellet
 from .falling import Falling
 from .ui_button import UIButton
 from .ui_hitbox import UIHitbox
+from .ui_element import UIElement
 
 __all__ = [
     "Position",
@@ -29,4 +30,5 @@ __all__ = [
     "Falling",
     "UIButton",
     "UIHitbox",
+    "UIElement",
 ]
