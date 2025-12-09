@@ -1,8 +1,9 @@
 # engine/ecs/world.py
 from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import Dict, Type, TypeVar, Iterable, Tuple, List, Any
+from typing import Dict, Type, TypeVar, Tuple, List, Any
+
+from .commands import CreateEntityCmd, DestroyEntityCmd
 
 
 class EntityId(int):
@@ -11,16 +12,6 @@ class EntityId(int):
 
 
 TComponent = TypeVar("TComponent")
-
-
-@dataclass
-class CreateEntityCmd:
-    components: Iterable[Any]  # list[Component] really, but generic here
-
-
-@dataclass
-class DestroyEntityCmd:
-    entity: EntityId
 
 
 class World:
@@ -34,14 +25,11 @@ class World:
 
     def __init__(self) -> None:
         self._next_id: int = 1
-
         # {ComponentType: {EntityId: component_instance}}
         self._components: Dict[Type[Any], Dict[EntityId, Any]] = {}
-
         # Cache for views by component type tuple
         # (string annotation to avoid importing View at module import time)
         self._views: Dict[Tuple[Type[Any], ...], "View"] = {}
-
         # Deferred commands like CreateEntityCmd / DestroyEntityCmd
         self._command_queue: List[Any] = []
 
@@ -83,7 +71,6 @@ class World:
     def view(self, *component_types: Type[Any]) -> "View":
         """
         Return a View over all entities that have *all* the given components.
-
         Usage:
             for eid, pos, vel in world.view(Position, Velocity):
                 ...
@@ -121,18 +108,34 @@ class World:
         """
         Apply all queued commands. Should be called by the scheduler
         in a predictable phase (e.g. 'post_update').
+
+        Uses the canonical CreateEntityCmd / DestroyEntityCmd from
+        engine.ecs.commands.
         """
         while self._command_queue:
             cmd = self._command_queue.pop(0)
+
             if isinstance(cmd, CreateEntityCmd):
                 self._apply_create_entity(cmd)
+
             elif isinstance(cmd, DestroyEntityCmd):
-                self.destroy_entity(cmd.entity)
+                # canonical field name is 'entity_id'
+                self.destroy_entity(EntityId(cmd.entity_id))
+
             else:
                 raise TypeError(f"Unknown command type: {type(cmd)!r}")
 
     def _apply_create_entity(self, cmd: CreateEntityCmd) -> EntityId:
+        """
+        Internal helper to create an entity and attach the components from
+        CreateEntityCmd.components.
+
+        CreateEntityCmd.components is:
+            Dict[ComponentType, component_instance]
+        but World.add_component infers the type from the instance, so we
+        only care about the values.
+        """
         eid = self.create_entity()
-        for component in cmd.components:
+        for component in cmd.components.values():
             self.add_component(eid, component)
         return eid

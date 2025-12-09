@@ -1,6 +1,5 @@
 # engine/scheduling/scheduler.py
 from __future__ import annotations
-
 from typing import Dict, List
 
 from engine.ecs import System, World
@@ -9,7 +8,6 @@ from engine.ecs import System, World
 class Scheduler:
     """
     Very simple phase-based scheduler.
-
     Phases:
       - pre_update: input, time step updates, housekeeping
       - logic: gameplay, AI, physics
@@ -43,7 +41,6 @@ class Scheduler:
         for phase in ("pre_update", "logic", "post_update"):
             for sys in self._systems_by_phase[phase]:
                 sys.update(world, dt)
-
             # After post_update, we want to apply entity commands
             if phase == "post_update":
                 world.flush_commands()

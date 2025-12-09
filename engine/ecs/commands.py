@@ -1,17 +1,27 @@
 # engine/ecs/commands.py
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import Iterable, Any
+from typing import Dict, Type, Any
 
-from .world import EntityId
+# Simple alias so we don't create circular imports.
+# World can also define EntityId = int; they don't need to be literally the same object.
+EntityId = int
 
 
 @dataclass
 class CreateEntityCmd:
-    components: Iterable[Any]
+    """
+    Request to create a new entity with a given component set.
+
+    components:
+        dict mapping ComponentType -> component instance
+        e.g. {Position: Position(...), Velocity: Velocity(...)}
+    """
+    components: Dict[Type[Any], Any]
 
 
 @dataclass
 class DestroyEntityCmd:
-    entity: EntityId
+    """
+    Request to destroy the given entity id.
+    """
+    entity_id: EntityId
