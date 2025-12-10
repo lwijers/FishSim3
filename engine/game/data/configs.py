@@ -25,6 +25,13 @@ def load_pellet_config() -> Dict[str, Any]:
     return load_json("pellets.json")
 
 
+def load_fsm_config() -> Dict[str, Any]:
+    """
+    Fish FSM config: start state weights, idle/cruise duration ranges.
+    """
+    return load_json("fsm.json")
+
+
 def load_falling_config() -> Dict[str, Any]:
     """
     Global defaults for falling behaviour (gravity, terminal velocity).

@@ -17,7 +17,7 @@ from engine.game.factories import (
 from engine.game.components import Position, RectSprite, UIHitbox, UIButton, SpriteRef, UIElement, UILabel, UIPanel
 from engine.game.rules import spawn_fish_in_tank_if_allowed
 from engine.game.components.tank_bounds import TankBounds
-from engine.game.data.configs import load_settings_config, load_ui_config, load_pellet_config, load_falling_config
+from engine.game.data.configs import load_settings_config, load_ui_config, load_pellet_config, load_falling_config, load_fsm_config
 from engine.app.constants import (
     RNG_ROOT_SEED,
     RNG_MAX_INT,
@@ -277,6 +277,8 @@ def build_engine() -> Engine:
 
     falling_cfg = load_falling_config()
     resources.set("falling_config", falling_cfg)
+    fsm_cfg = load_fsm_config()
+    resources.set("fsm_config", fsm_cfg)
     # Validate UI config components reference defined styles
     _validate_ui_config(ui_cfg)
 

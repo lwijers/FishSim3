@@ -18,8 +18,8 @@ class IdleState(FishState):
     """
     name = "idle"
 
-    def __init__(self, duration: float) -> None:
-        self._duration = float(duration)
+    def __init__(self, duration_range) -> None:
+        self._dur_range = duration_range
 
     def on_enter(
         self,
@@ -31,7 +31,8 @@ class IdleState(FishState):
         rng: random.Random,
     ) -> None:
         brain.time_in_state = 0.0
-        brain.state_duration = self._duration
+        lo, hi = self._dur_range if isinstance(self._dur_range, (list, tuple)) else (self._dur_range, self._dur_range)
+        brain.state_duration = rng.uniform(float(lo), float(hi))
         intent.target_vx = 0.0
         intent.target_vy = 0.0
 

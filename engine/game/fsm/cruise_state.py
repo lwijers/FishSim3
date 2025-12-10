@@ -23,11 +23,11 @@ class CruiseState(FishState):
 
     def __init__(
         self,
-        duration: float,
+        duration_range,
         species_cfg: Dict[str, Dict[str, Any]] | None,
         default_speed: float,
     ) -> None:
-        self._duration = float(duration)
+        self._dur_range = duration_range
         self._species_cfg = species_cfg or {}
         self._default_speed = float(default_speed)
 
@@ -56,7 +56,8 @@ class CruiseState(FishState):
         rng: random.Random,
     ) -> None:
         brain.time_in_state = 0.0
-        brain.state_duration = self._duration
+        lo, hi = self._dur_range if isinstance(self._dur_range, (list, tuple)) else (self._dur_range, self._dur_range)
+        brain.state_duration = rng.uniform(float(lo), float(hi))
 
         speed = self._pick_speed(fish, rng)
         angle = rng.uniform(0.0, 2.0 * math.pi)
