@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pygame
 from engine.app.constants import DEFAULT_BG_COLOR
+from pathlib import Path
 
 
 class Renderer:
@@ -16,6 +17,7 @@ class Renderer:
         self.bg_color = tuple(bg_color) if bg_color is not None else DEFAULT_BG_COLOR
         # Cache of scaled surfaces: {(id(image), target_size): scaled_surface}
         self._scale_cache: dict[tuple[int, tuple[int, int]], pygame.Surface] = {}
+        self._font_cache: dict[tuple[int, str], pygame.font.Font] = {}
 
     def clear(self) -> None:
         """Fill the entire screen with the background color."""
@@ -66,3 +68,23 @@ class Renderer:
             image = cached
 
         self.screen.blit(image, (int(x), int(y)))
+
+    def draw_text(self, text: str, x: float, y: float, color=(255, 255, 255), font_size: int = 16, font_name: str | None = None) -> None:
+        font_path: str | None = None
+        if font_name:
+            p = Path(font_name)
+            if not p.is_absolute():
+                p = Path("assets") / p
+            if p.exists():
+                font_path = str(p)
+
+        key = (font_size, font_path or font_name or "")
+        font = self._font_cache.get(key)
+        if font is None:
+            if font_path:
+                font = pygame.font.Font(font_path, font_size)
+            else:
+                font = pygame.font.SysFont(font_name, font_size)
+            self._font_cache[key] = font
+        surface = font.render(text, True, color)
+        self.screen.blit(surface, (int(x), int(y)))

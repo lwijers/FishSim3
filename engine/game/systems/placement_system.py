@@ -3,7 +3,7 @@ from typing import List, Tuple
 from engine.ecs import System, World
 from engine.ecs.commands import CreateEntityCmd
 from engine.resources import ResourceStore
-from engine.game.components import Position, RectSprite, InTank, TankBounds, Tank, UIHitbox, UIElement
+from engine.game.components import Position, RectSprite, InTank, TankBounds, Tank, UIHitbox, UIElement, MouseState
 from engine.game.components.pellet import Pellet
 from engine.game.events.input_events import ClickWorld
 from engine.game.factories.pellet_factory import create_pellet_cmd
@@ -40,41 +40,48 @@ class PlacementSystem(System):
         self._pending = []
 
         for evt in events:
-            # Ignore clicks that hit UI elements
-            hit_ui = False
-            for _, pos_ui, hitbox_ui in world.view(Position, UIHitbox):
-                if pos_ui.x <= evt.x <= pos_ui.x + hitbox_ui.width and pos_ui.y <= evt.y <= pos_ui.y + hitbox_ui.height:
-                    hit_ui = True
-                    break
-            if not hit_ui:
-                for _, pos_ui, ui_elem in world.view(Position, UIElement):
-                    if pos_ui.x <= evt.x <= pos_ui.x + ui_elem.width and pos_ui.y <= evt.y <= pos_ui.y + ui_elem.height:
-                        hit_ui = True
-                        break
-            if hit_ui:
+            if self._ui_hit(world, evt.x, evt.y):
                 continue
-            else:
-                # Only spawn if pellet tool is active
-                if self.resources.try_get("active_tool") != "pellet":
-                    continue
-
-                tank_eid, bounds = self._find_tank_at(world, evt.x, evt.y)
-                if tank_eid is None or bounds is None:
-                    continue
-
-                size = float(self._pellet_cfg.get("size", 0.0))
-                clamped_x = max(bounds.x, min(evt.x, bounds.x + bounds.width - size))
-                clamped_y = max(bounds.y, min(evt.y, bounds.y + bounds.height - size))
-
-                cmd: CreateEntityCmd = create_pellet_cmd(
-                    clamped_x,
-                    clamped_y,
-                    tank_eid,
-                    pellet_cfg=self._pellet_cfg,
-                    rng=self._rng,
-                )
-                world.queue_command(cmd)
+            # Only spawn if pellet tool is active
+            if self.resources.try_get("active_tool") != "pellet":
                 continue
 
-            # If we broke due to UI hit, skip spawning
-            continue
+            tank_eid, bounds = self._find_tank_at(world, evt.x, evt.y)
+            if tank_eid is None or bounds is None:
+                continue
+
+            size = float(self._pellet_cfg.get("size", 0.0))
+            clamped_x = max(bounds.x, min(evt.x, bounds.x + bounds.width - size))
+            clamped_y = max(bounds.y, min(evt.y, bounds.y + bounds.height - size))
+
+            cmd: CreateEntityCmd = create_pellet_cmd(
+                clamped_x,
+                clamped_y,
+                tank_eid,
+                pellet_cfg=self._pellet_cfg,
+                rng=self._rng,
+            )
+            world.queue_command(cmd)
+
+    def _ui_hit(self, world: World, x: float, y: float) -> bool:
+        panel_links = self.resources.try_get("ui_panel_links", {})
+        panel_visibility = self.resources.try_get("panel_visibility", {})
+
+        for eid, pos_ui, hitbox_ui in world.view(Position, UIHitbox):
+            ui_elem = world.get_components(UIElement).get(eid)
+            if ui_elem and ui_elem.visible_flag and not self.resources.try_get(ui_elem.visible_flag, False):
+                continue
+            panel_id = panel_links.get(eid)
+            if panel_id and not panel_visibility.get(panel_id, False):
+                continue
+            if pos_ui.x <= x <= pos_ui.x + hitbox_ui.width and pos_ui.y <= y <= pos_ui.y + hitbox_ui.height:
+                return True
+        for eid, pos_ui, ui_elem in world.view(Position, UIElement):
+            if ui_elem.visible_flag and not self.resources.try_get(ui_elem.visible_flag, False):
+                continue
+            panel_id = panel_links.get(eid)
+            if panel_id and not panel_visibility.get(panel_id, False):
+                continue
+            if pos_ui.x <= x <= pos_ui.x + ui_elem.width and pos_ui.y <= y <= pos_ui.y + ui_elem.height:
+                return True
+        return False

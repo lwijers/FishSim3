@@ -6,6 +6,11 @@ from .sprite_render_system import SpriteRenderSystem
 from .placement_system import PlacementSystem
 from .falling_system import FallingSystem
 from .ui_button_system import UIButtonSystem
+from .keyboard_system import KeyboardSystem
+from .mouse_system import MouseSystem
+from .ui_label_system import UILabelSystem
+from .debug_menu_system import DebugMenuSystem
+from .fish_state_label_system import FishStateLabelSystem
 
 __all__ = [
     "MovementSystem",
@@ -15,4 +20,9 @@ __all__ = [
     "PlacementSystem",
     "FallingSystem",
     "UIButtonSystem",
+    "KeyboardSystem",
+    "MouseSystem",
+    "UILabelSystem",
+    "DebugMenuSystem",
+    "FishStateLabelSystem",
 ]

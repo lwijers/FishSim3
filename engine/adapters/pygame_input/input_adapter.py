@@ -5,7 +5,7 @@ import pygame
 
 from engine.app.constants import FALLBACK_SCREEN_SIZE
 from engine.resources import ResourceStore
-from engine.game.events.input_events import ClickWorld, ClickUI, Scroll, PointerMove
+from engine.game.events.input_events import ClickWorld, ClickUI, Scroll, PointerMove, KeyEvent
 
 class InputAdapter:
     """
@@ -59,3 +59,6 @@ class InputAdapter:
             if logical:
                 x, y = logical
                 self.bus.publish(PointerMove(x=x, y=y))
+        elif event.type == pygame.KEYDOWN or event.type == pygame.KEYUP:
+            key_name = pygame.key.name(event.key)
+            self.bus.publish(KeyEvent(key=key_name, pressed=(event.type == pygame.KEYDOWN)))

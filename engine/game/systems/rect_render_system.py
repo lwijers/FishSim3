@@ -67,12 +67,21 @@ class RectRenderSystem(System):
         borders = resources.try_get("ui_borders", {})
         styles = resources.try_get("ui_styles", {})
         ui_elem_store = world.get_components(UIElement)
+        panel_visibility = resources.try_get("panel_visibility", {})
+        panel_links = resources.try_get("ui_panel_links", {})
 
         # Draw all entities that have Position + RectSprite
         drew_any = False
         for eid, pos, sprite in world.view(Position, RectSprite):
             # If this entity also has a SpriteRef, skip drawing the fallback rect.
             if eid in sprite_ref_store:
+                continue
+            ui_elem = ui_elem_store.get(eid)
+            if ui_elem and ui_elem.visible_flag:
+                if not resources.try_get(ui_elem.visible_flag, False):
+                    continue
+            panel_id = panel_links.get(eid)
+            if panel_id and not panel_visibility.get(panel_id, False):
                 continue
             x_px = offset_x + pos.x * scale
             y_px = offset_y + pos.y * scale

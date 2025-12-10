@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class ClickWorld:
     x: float
@@ -9,17 +10,24 @@ class ClickWorld:
 
 
 @dataclass(frozen=True)
+class ClickUI:
+    id: str | None = None
+    x: float | None = None
+    y: float | None = None
+
+
+@dataclass(frozen=True)
 class PointerMove:
     x: float
     y: float
 
+
 @dataclass(frozen=True)
-class ClickUI:
-    ui_id: str
-    x: float
-    y: float
+class KeyEvent:
+    key: str
+    pressed: bool
+
 
 @dataclass(frozen=True)
 class Scroll:
     delta: float
-

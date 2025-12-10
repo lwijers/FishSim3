@@ -41,6 +41,20 @@ class UIButtonSystem(System):
             style_key = ui_elem.style if ui_elem else None
             return styles.get(style_key, {})
 
+        panel_links = self.resources.try_get("ui_panel_links", {})
+        panel_visibility = self.resources.try_get("panel_visibility", {})
+
+        def is_visible(eid):
+            ui_elem = ui_elem_store.get(eid)
+            if ui_elem and ui_elem.visible_flag:
+                if not bool(self.resources.try_get(ui_elem.visible_flag, False)):
+                    return False
+            panel_id = panel_links.get(eid)
+            if panel_id:
+                if not panel_visibility.get(panel_id, False):
+                    return False
+            return True
+
         def color_for_state(eid, state: str):
             style = style_for_eid(eid)
             palette = {
@@ -73,6 +87,10 @@ class UIButtonSystem(System):
         # Hover handling
         for move in moves:
             for eid, pos, hitbox, button in world.view(Position, UIHitbox, UIButton):
+                if not is_visible(eid):
+                    button.hover = False
+                    apply_style(eid, button)
+                    continue
                 if not (pos.x <= move.x <= pos.x + hitbox.width and pos.y <= move.y <= pos.y + hitbox.height):
                     button.hover = False
                     apply_style(eid, button)
@@ -89,6 +107,8 @@ class UIButtonSystem(System):
                 continue
 
             for eid, pos, hitbox, button in world.view(Position, UIHitbox, UIButton):
+                if not is_visible(eid):
+                    continue
                 if not (pos.x <= evt.x <= pos.x + hitbox.width and pos.y <= evt.y <= pos.y + hitbox.height):
                     continue
 

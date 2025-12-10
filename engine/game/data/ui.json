@@ -11,6 +11,23 @@
       "border": [20, 40, 60],
       "border_width": 3,
       "corner_radius": 12
+    },
+    "debug_panel": {
+      "inactive": [0, 0, 0, 180],
+      "border": [80, 120, 160],
+      "border_width": 2,
+      "corner_radius": 6
+    },
+    "debug_text": {
+      "text_color": [230, 240, 255],
+      "font_size": 14,
+      "font_name": "fonts/fishsim.otf"
+    },
+    "fish_state_text": {
+      "text_color": [255, 255, 255],
+      "font_size": 12,
+      "font_name": "fonts/fishsim.otf",
+      "offset_y": 8.0
     }
   },
   "components": [
@@ -26,6 +43,52 @@
       "tool": "pellet",
       "exclusive_group": "tools",
       "deactivate_on_right_click": true
+    },
+    {
+      "id": "debug_panel",
+      "type": "panel",
+      "style": "debug_panel",
+      "x": 12.0,
+      "y": 12.0,
+      "width": 220.0,
+      "height": 120.0,
+      "visible_flag": "debug_enabled"
+    },
+    {
+      "id": "debug_text_fps",
+      "type": "label",
+      "style": "debug_text",
+      "x": 20.0,
+      "y": 30.0,
+      "text_key": "debug_fps",
+      "panel": "debug_panel"
+    },
+    {
+      "id": "debug_text_entities",
+      "type": "label",
+      "style": "debug_text",
+      "x": 20.0,
+      "y": 50.0,
+      "text_key": "debug_entities",
+      "panel": "debug_panel"
+    },
+    {
+      "id": "debug_text_tool",
+      "type": "label",
+      "style": "debug_text",
+      "x": 20.0,
+      "y": 70.0,
+      "text_key": "debug_tool",
+      "panel": "debug_panel"
+    },
+    {
+      "id": "debug_text_mouse",
+      "type": "label",
+      "style": "debug_text",
+      "x": 20.0,
+      "y": 90.0,
+      "text_key": "debug_mouse",
+      "panel": "debug_panel"
     }
   ]
 }

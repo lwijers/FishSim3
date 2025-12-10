@@ -3,9 +3,6 @@ from dataclasses import dataclass
 
 
 @dataclass
-class UIElement:
-    width: float
-    height: float
-    style: str | None = None
-    element_id: str | None = None
+class UIPanel:
+    panel_id: str | None = None
     visible_flag: str | None = None
