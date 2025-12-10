@@ -10,6 +10,8 @@ from engine.game.components.in_tank import InTank
 from engine.game.components.tank_bounds import TankBounds
 from engine.game.components.movement_intent import MovementIntent
 from engine.game.components.falling import Falling
+from engine.game.components.bobbing import Bobbing
+import math
 
 
 class MovementSystem(System):
@@ -45,6 +47,7 @@ class MovementSystem(System):
         tank_bounds_store = world.get_components(TankBounds)
         intent_store = world.get_components(MovementIntent)
         falling_store = world.get_components(Falling)
+        bob_store = world.get_components(Bobbing)
 
         for eid, pos, vel, sprite in world.view(Position, Velocity, RectSprite):
             falling = falling_store.get(eid)
@@ -61,6 +64,11 @@ class MovementSystem(System):
             if intent is not None:
                 vel.vx = intent.target_vx
                 vel.vy = intent.target_vy
+
+            bob = bob_store.get(eid)
+            if bob is not None:
+                bob.t += dt
+                vel.vy += bob.amplitude * math.sin(2.0 * math.pi * bob.frequency * bob.t + bob.phase)
 
             # ------------------------------------------------------------
             # 2) Determine which bounds apply: tank bounds or full logical
