@@ -7,6 +7,7 @@ from engine.ecs import World
 from engine.scheduling import Scheduler
 from engine.resources import ResourceStore
 from engine.events import EventBus
+
 from engine.game.systems import MovementSystem, RectRenderSystem, FishFSMSystem
 from engine.game.factories import (
     load_species_config,
@@ -14,10 +15,28 @@ from engine.game.factories import (
     create_tank,
     load_tank_config,
 )
-from engine.game.components import Position, RectSprite, UIHitbox, UIButton, SpriteRef, UIElement, UILabel, UIPanel
+from engine.game.components import (
+    Position,
+    RectSprite,
+    UIHitbox,
+    UIButton,
+    SpriteRef,
+    UIElement,
+    UILabel,
+    UIPanel,
+)
 from engine.game.rules import spawn_fish_in_tank_if_allowed
 from engine.game.components.tank_bounds import TankBounds
-from engine.game.data.configs import load_settings_config, load_ui_config, load_pellet_config, load_falling_config, load_fsm_config
+from engine.game.debug import DebugRegistry
+from engine.game.data.configs import (
+    load_settings_config,
+    load_ui_config,
+    load_debug_panels_config,
+    load_pellet_config,
+    load_falling_config,
+    load_fsm_config,
+    load_movement_config,
+)
 from engine.app.constants import (
     RNG_ROOT_SEED,
     RNG_MAX_INT,
@@ -35,8 +54,9 @@ from engine.game.systems import (
     KeyboardSystem,
     MouseSystem,
     UILabelSystem,
-    DebugMenuSystem,
+    DebugManagerSystem,
     FishStateLabelSystem,
+    MovementDebugSystem,
 )
 
 
@@ -48,10 +68,15 @@ def _validate_ui_config(ui_cfg: dict) -> None:
             raise ValueError("UI component missing 'type'")
         style_key = comp.get("style")
         if style_key is not None and style_key not in styles:
-            raise ValueError(f"UI component {comp.get('id', comp['type'])!r} references unknown style {style_key!r}")
+            raise ValueError(
+                f"UI component {comp.get('id', comp['type'])!r} references unknown style {style_key!r}"
+            )
         ctype = comp["type"]
         if ctype not in ("label",) and ("width" not in comp or "height" not in comp):
-            raise ValueError(f"UI component {comp.get('id', comp['type'])!r} must define width/height")
+            raise ValueError(
+                f"UI component {comp.get('id', comp['type'])!r} must define width/height"
+            )
+
 
 @dataclass
 class Engine:
@@ -110,6 +135,7 @@ def _populate_debug_fish(
     # Ensure the spawn area is valid even if a config margin is too large.
     if width <= 0.0 or height <= 0.0:
         return
+
     max_margin = max(0.0, min(width, height) / 2.0 - 1.0)
     margin = min(margin, max_margin)
 
@@ -128,7 +154,12 @@ def _populate_debug_fish(
         )
 
 
-def _create_ui_from_config(world: World, resources: ResourceStore, logical_w: float, logical_h: float) -> None:
+def _create_ui_from_config(
+    world: World,
+    resources: ResourceStore,
+    logical_w: float,
+    logical_h: float,
+) -> None:
     ui_cfg = resources.try_get("ui_config", {})
     components = ui_cfg.get("components", [])
     styles = ui_cfg.get("styles", {})
@@ -136,20 +167,26 @@ def _create_ui_from_config(world: World, resources: ResourceStore, logical_w: fl
     for comp in components:
         ctype = comp.get("type")
         style_key = comp.get("style")
+
         if ctype == "button":
             width = float(comp.get("width", 64.0))
             height = float(comp.get("height", 64.0))
             x = float(comp.get("x", 0.0))
             y_val = comp.get("y")
             bottom = comp.get("bottom")
+
             if y_val is None:
                 bottom_val = float(bottom if bottom is not None else 0.0)
                 y = max(0.0, logical_h - height - bottom_val)
             else:
                 y = float(y_val)
+
             tool_id = comp.get("tool")
             exclusive_group = comp.get("exclusive_group")
-            deactivate_on_right_click = bool(comp.get("deactivate_on_right_click", True))
+            deactivate_on_right_click = bool(
+                comp.get("deactivate_on_right_click", True)
+            )
+
             icon_cfg = comp.get("icon", {})
             icon_size = float(icon_cfg.get("size", 32.0))
             icon_sprite = icon_cfg.get("sprite_id")
@@ -157,18 +194,54 @@ def _create_ui_from_config(world: World, resources: ResourceStore, logical_w: fl
             btn_eid = world.create_entity()
             world.add_component(btn_eid, Position(x=x, y=y))
             color = tuple(styles.get(style_key, {}).get("inactive", (42, 82, 110)))
-            world.add_component(btn_eid, RectSprite(width=width, height=height, color=color))
+            world.add_component(
+                btn_eid,
+                RectSprite(width=width, height=height, color=color),
+            )
             world.add_component(btn_eid, UIHitbox(width=width, height=height))
-            world.add_component(btn_eid, UIElement(width=width, height=height, style=style_key, element_id=comp.get("id"), visible_flag=comp.get("visible_flag")))
-            world.add_component(btn_eid, UIButton(tool_id=tool_id, active=False, exclusive_group=exclusive_group, deactivate_on_right_click=deactivate_on_right_click))
+            world.add_component(
+                btn_eid,
+                UIElement(
+                    width=width,
+                    height=height,
+                    style=style_key,
+                    element_id=comp.get("id"),
+                    visible_flag=comp.get("visible_flag"),
+                ),
+            )
+            world.add_component(
+                btn_eid,
+                UIButton(
+                    tool_id=tool_id,
+                    active=False,
+                    exclusive_group=exclusive_group,
+                    deactivate_on_right_click=deactivate_on_right_click,
+                ),
+            )
 
             if icon_sprite:
                 icon_x = x + (width - icon_size) / 2.0
                 icon_y = y + (height - icon_size) / 2.0
                 icon_eid = world.create_entity()
                 world.add_component(icon_eid, Position(x=icon_x, y=icon_y))
-                world.add_component(icon_eid, SpriteRef(sprite_id=icon_sprite, width=icon_size, height=icon_size))
-                world.add_component(icon_eid, UIElement(width=icon_size, height=icon_size, style=None, element_id=f"{comp.get('id')}_icon", visible_flag=comp.get("visible_flag")))
+                world.add_component(
+                    icon_eid,
+                    SpriteRef(
+                        sprite_id=icon_sprite,
+                        width=icon_size,
+                        height=icon_size,
+                    ),
+                )
+                world.add_component(
+                    icon_eid,
+                    UIElement(
+                        width=icon_size,
+                        height=icon_size,
+                        style=None,
+                        element_id=f"{comp.get('id')}_icon",
+                        visible_flag=comp.get("visible_flag"),
+                    ),
+                )
 
         elif ctype == "panel":
             width = float(comp.get("width", 0.0))
@@ -176,30 +249,70 @@ def _create_ui_from_config(world: World, resources: ResourceStore, logical_w: fl
             x = float(comp.get("x", 0.0))
             y_val = comp.get("y")
             bottom = comp.get("bottom")
+
             if y_val is None:
                 bottom_val = float(bottom if bottom is not None else 0.0)
                 y = max(0.0, logical_h - height - bottom_val)
             else:
                 y = float(y_val)
+
             color = tuple(styles.get(style_key, {}).get("inactive", (0, 0, 0, 180)))
             eid = world.create_entity()
             world.add_component(eid, Position(x=x, y=y))
-            world.add_component(eid, RectSprite(width=width, height=height, color=color))
-            world.add_component(eid, UIElement(width=width, height=height, style=style_key, element_id=comp.get("id"), visible_flag=comp.get("visible_flag")))
+            world.add_component(
+                eid,
+                RectSprite(width=width, height=height, color=color),
+            )
+            world.add_component(
+                eid,
+                UIElement(
+                    width=width,
+                    height=height,
+                    style=style_key,
+                    element_id=comp.get("id"),
+                    visible_flag=comp.get("visible_flag"),
+                ),
+            )
             world.add_component(eid, UIHitbox(width=width, height=height))
-            world.add_component(eid, UIPanel(panel_id=comp.get("id"), visible_flag=comp.get("visible_flag")))
+            world.add_component(
+                eid,
+                UIPanel(
+                    panel_id=comp.get("id"),
+                    visible_flag=comp.get("visible_flag"),
+                ),
+            )
+
             panel_visibility = resources.try_get("panel_visibility", {})
-            panel_visibility[comp.get("id")] = bool(resources.try_get(comp.get("visible_flag"), False)) if comp.get("visible_flag") else False
+            panel_visibility[comp.get("id")] = bool(
+                resources.try_get(comp.get("visible_flag"), False)
+            ) if comp.get("visible_flag") else False
             resources.set("panel_visibility", panel_visibility)
 
         elif ctype == "label":
             x = float(comp.get("x", 0.0))
             y_val = comp.get("y", 0.0)
             y = float(y_val)
-            text_key = comp.get("text_key", "")
+
+            # --- FIX: support both text_key (dynamic) and text (static) ---
+            text_key = comp.get("text_key")
+            text_literal = comp.get("text")
+
+            if text_key is not None:
+                # Dynamic label (e.g. debug_fps, debug_entities...)
+                label_text_key = str(text_key)
+                label_text = label_text_key  # will be overwritten by DebugManagerSystem
+            else:
+                # Static label (e.g. Motion Debug, Blue: Velocity, Orange: Intent)
+                label_text_key = ""
+                label_text = str(text_literal) if text_literal is not None else ""
+
             eid = world.create_entity()
             world.add_component(eid, Position(x=x, y=y))
-            world.add_component(eid, UILabel(text=text_key, text_key=text_key))
+            world.add_component(
+                eid,
+                UILabel(text=label_text, text_key=label_text_key),
+            )
+
             width = float(comp.get("width", 0.0))
             height = float(comp.get("height", 0.0))
             world.add_component(
@@ -212,6 +325,7 @@ def _create_ui_from_config(world: World, resources: ResourceStore, logical_w: fl
                     visible_flag=comp.get("visible_flag"),
                 ),
             )
+
             panel_parent = comp.get("panel")
             if panel_parent:
                 # Link this element to parent panel for visibility inheritance
@@ -221,6 +335,8 @@ def _create_ui_from_config(world: World, resources: ResourceStore, logical_w: fl
 
     # Store styles for renderers/systems
     resources.set("ui_styles", styles)
+
+
 def build_engine() -> Engine:
     """
     Composition root for the core engine.
@@ -237,8 +353,11 @@ def build_engine() -> Engine:
     # ------------------------------------------------------------------
     settings = load_settings_config()
     ui_cfg = load_ui_config()
+    debug_panels_cfg = load_debug_panels_config()
     resources.set("settings", settings)
     resources.set("ui_config", ui_cfg)
+    resources.set("debug_panels_config", debug_panels_cfg)
+    resources.set("debug_registry", DebugRegistry.from_config(debug_panels_cfg))
     resources.set("ui_styles", ui_cfg.get("styles", {}))
 
     # Expose logical_size if configured; RectRenderSystem can fall back
@@ -277,8 +396,13 @@ def build_engine() -> Engine:
 
     falling_cfg = load_falling_config()
     resources.set("falling_config", falling_cfg)
+
     fsm_cfg = load_fsm_config()
     resources.set("fsm_config", fsm_cfg)
+
+    movement_cfg = load_movement_config()
+    resources.set("movement_config", movement_cfg)
+
     # Validate UI config components reference defined styles
     _validate_ui_config(ui_cfg)
 
@@ -292,13 +416,14 @@ def build_engine() -> Engine:
     ui_button_sys = UIButtonSystem(resources)
     keyboard_sys = KeyboardSystem(resources)
     mouse_sys = MouseSystem(resources)
-    debug_menu_sys = DebugMenuSystem(resources)
+    debug_menu_sys = DebugManagerSystem(resources)
     placement_sys = PlacementSystem(resources)
     falling_sys = FallingSystem(resources)
     move_sys = MovementSystem(resources)
     rect_render_sys = RectRenderSystem(resources)
     sprite_render_sys = SpriteRenderSystem(resources)
     fish_state_label_sys = FishStateLabelSystem(resources)
+    movement_debug_sys = MovementDebugSystem(resources)
 
     # Order matters:
     # - FSM before Movement in logic
@@ -316,8 +441,10 @@ def build_engine() -> Engine:
     scheduler.add_system(placement_sys, phase="logic")
     scheduler.add_system(falling_sys, phase="logic")
     scheduler.add_system(move_sys, phase="logic")
+
     scheduler.add_system(rect_render_sys, phase="render")
     scheduler.add_system(UILabelSystem(resources), phase="render")
+    scheduler.add_system(movement_debug_sys, phase="render")
     scheduler.add_system(fish_state_label_sys, phase="render")
     scheduler.add_system(sprite_render_sys, phase="render")
 
@@ -339,6 +466,7 @@ def build_engine() -> Engine:
     bounds = tank_def.get("bounds")
     if not (isinstance(bounds, (list, tuple)) and len(bounds) == 4):
         raise ValueError(f"Tank {starting_tank_id!r} is missing a 4-element 'bounds' list.")
+
     x, y, width, height = (
         float(bounds[0]),
         float(bounds[1]),

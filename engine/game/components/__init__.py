@@ -18,7 +18,6 @@ from .keyboard_state import KeyboardState
 from .mouse_state import MouseState
 from .ui_label import UILabel
 from .ui_panel import UIPanel
-from .bobbing import Bobbing
 
 __all__ = [
     "Position",
@@ -40,5 +39,4 @@ __all__ = [
     "MouseState",
     "UILabel",
     "UIPanel",
-    "Bobbing",
 ]

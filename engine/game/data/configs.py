@@ -18,6 +18,13 @@ def load_ui_config() -> Dict[str, Any]:
     return load_json("ui.json")
 
 
+def load_debug_panels_config() -> Dict[str, Any]:
+    """
+    Debug panel toggles/keys and related flags.
+    """
+    return load_json("debug_panels.json")
+
+
 def load_pellet_config() -> Dict[str, Any]:
     """
     Pellet defaults: size, color, sprite_id.
@@ -37,3 +44,10 @@ def load_falling_config() -> Dict[str, Any]:
     Global defaults for falling behaviour (gravity, terminal velocity).
     """
     return load_json("falling.json")
+
+
+def load_movement_config() -> Dict[str, Any]:
+    """
+    Movement tuning (max acceleration, max speed).
+    """
+    return load_json("movement.json")

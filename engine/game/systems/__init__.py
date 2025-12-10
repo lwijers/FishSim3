@@ -9,8 +9,9 @@ from .ui_button_system import UIButtonSystem
 from .keyboard_system import KeyboardSystem
 from .mouse_system import MouseSystem
 from .ui_label_system import UILabelSystem
-from .debug_menu_system import DebugMenuSystem
+from .debug_menu_system import DebugManagerSystem
 from .fish_state_label_system import FishStateLabelSystem
+from .movement_debug_system import MovementDebugSystem
 
 __all__ = [
     "MovementSystem",
@@ -23,6 +24,7 @@ __all__ = [
     "KeyboardSystem",
     "MouseSystem",
     "UILabelSystem",
-    "DebugMenuSystem",
+    "DebugManagerSystem",
     "FishStateLabelSystem",
+    "MovementDebugSystem",
 ]

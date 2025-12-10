@@ -50,7 +50,7 @@ class UIButtonSystem(System):
                 if not bool(self.resources.try_get(ui_elem.visible_flag, False)):
                     return False
             panel_id = panel_links.get(eid)
-            if panel_id:
+            if panel_id is not None and panel_id in panel_visibility:
                 if not panel_visibility.get(panel_id, False):
                     return False
             return True

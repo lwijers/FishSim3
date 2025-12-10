@@ -88,3 +88,12 @@ class Renderer:
             self._font_cache[key] = font
         surface = font.render(text, True, color)
         self.screen.blit(surface, (int(x), int(y)))
+
+    def draw_line(
+        self,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        color=(255, 255, 255),
+        width: int = 1,
+    ) -> None:
+        pygame.draw.line(self.screen, color, (int(start[0]), int(start[1])), (int(end[0]), int(end[1])), width)

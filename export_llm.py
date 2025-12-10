@@ -7,7 +7,7 @@ OUTPUT = ROOT / "project_llm_dump.txt"
 
 IGNORE_DIRS = {".git", ".idea", ".venv", "venv", "__pycache__", "build", "dist"}
 IGNORE_SUFFIXES = {".pyc", ".pyo"}
-IGNORE_FILES = {"export_script.py", "project_export.txt", OUTPUT.name}
+IGNORE_FILES = {"export_llm.py", "project_llm.txt", OUTPUT.name}
 
 
 def list_files() -> list[Path]:
@@ -55,6 +55,9 @@ def main() -> None:
     for path in files:
         rel = path.relative_to(ROOT).as_posix()
         lines.append(f"\nFILE {rel}")
+        if not path.exists():
+            lines.append("[MISSING FILE]")
+            continue
         lines.append(path.read_text(encoding="utf-8", errors="replace").rstrip("\n"))
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
 

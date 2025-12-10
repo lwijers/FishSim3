@@ -5,7 +5,5 @@
     "cruise": 0.5
   },
   "idle_duration_range": [1.0, 2.0],
-  "cruise_duration_range": [2.0, 3.5],
-  "idle_bob_amplitude_range": [2.0, 6.0],
-  "idle_bob_frequency_range": [0.5, 1.2]
+  "cruise_duration_range": [2.0, 3.5]
 }

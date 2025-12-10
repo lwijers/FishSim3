@@ -28,6 +28,27 @@
       "font_size": 12,
       "font_name": "fonts/fishsim.otf",
       "offset_y": 8.0
+    },
+    "motion_debug_panel": {
+      "inactive": [0, 0, 0, 200],
+      "border": [80, 120, 160],
+      "border_width": 2,
+      "corner_radius": 6
+    },
+    "motion_debug_text": {
+      "text_color": [255, 255, 255],
+      "font_size": 16,
+      "font_name": "fonts/fishsim.otf"
+    },
+    "motion_debug_text_velocity": {
+      "text_color": [0, 200, 255],
+      "font_size": 16,
+      "font_name": "fonts/fishsim.otf"
+    },
+    "motion_debug_text_intent": {
+      "text_color": [255, 200, 0],
+      "font_size": 16,
+      "font_name": "fonts/fishsim.otf"
     }
   },
   "components": [
@@ -89,6 +110,43 @@
       "y": 90.0,
       "text_key": "debug_mouse",
       "panel": "debug_panel"
+    },
+    {
+      "id": "motion_debug_panel",
+      "type": "panel",
+      "style": "motion_debug_panel",
+      "x": 12.0,
+      "y": 12.0,
+      "width": 220.0,
+      "height": 100.0,
+      "visible_flag": "debug_show_vectors"
+    },
+    {
+      "id": "motion_debug_title",
+      "type": "label",
+      "style": "motion_debug_text",
+      "x": 20.0,
+      "y": 22.0,
+      "text": "Motion Debug",
+      "panel": "motion_debug_panel"
+    },
+    {
+      "id": "motion_debug_legend1",
+      "type": "label",
+      "style": "motion_debug_text_velocity",
+      "x": 20.0,
+      "y": 42.0,
+      "text": "Blue: Velocity",
+      "panel": "motion_debug_panel"
+    },
+    {
+      "id": "motion_debug_legend2",
+      "type": "label",
+      "style": "motion_debug_text_intent",
+      "x": 20.0,
+      "y": 62.0,
+      "text": "Orange: Intent",
+      "panel": "motion_debug_panel"
     }
   ]
 }

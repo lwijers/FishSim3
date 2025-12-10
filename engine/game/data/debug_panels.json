@@ -1,0 +1,17 @@
+{
+  "_version": 1,
+  "panels": [
+    {
+      "id": "debug_panel",
+      "toggle_key": "f1",
+      "flags_on": ["debug_enabled"],
+      "exclusive_group": "debug"
+    },
+    {
+      "id": "motion_debug_panel",
+      "toggle_key": "f3",
+      "flags_on": ["debug_show_vectors"],
+      "exclusive_group": "debug"
+    }
+  ]
+}

@@ -81,7 +81,7 @@ class RectRenderSystem(System):
                 if not resources.try_get(ui_elem.visible_flag, False):
                     continue
             panel_id = panel_links.get(eid)
-            if panel_id and not panel_visibility.get(panel_id, False):
+            if panel_id is not None and panel_id in panel_visibility and not panel_visibility.get(panel_id, False):
                 continue
             x_px = offset_x + pos.x * scale
             y_px = offset_y + pos.y * scale

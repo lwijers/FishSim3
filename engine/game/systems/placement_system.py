@@ -72,16 +72,18 @@ class PlacementSystem(System):
             if ui_elem and ui_elem.visible_flag and not self.resources.try_get(ui_elem.visible_flag, False):
                 continue
             panel_id = panel_links.get(eid)
-            if panel_id and not panel_visibility.get(panel_id, False):
-                continue
+            if panel_id is not None and panel_id in panel_visibility:
+                if not panel_visibility.get(panel_id, False):
+                    continue
             if pos_ui.x <= x <= pos_ui.x + hitbox_ui.width and pos_ui.y <= y <= pos_ui.y + hitbox_ui.height:
                 return True
         for eid, pos_ui, ui_elem in world.view(Position, UIElement):
             if ui_elem.visible_flag and not self.resources.try_get(ui_elem.visible_flag, False):
                 continue
             panel_id = panel_links.get(eid)
-            if panel_id and not panel_visibility.get(panel_id, False):
-                continue
+            if panel_id is not None and panel_id in panel_visibility:
+                if not panel_visibility.get(panel_id, False):
+                    continue
             if pos_ui.x <= x <= pos_ui.x + ui_elem.width and pos_ui.y <= y <= pos_ui.y + ui_elem.height:
                 return True
         return False

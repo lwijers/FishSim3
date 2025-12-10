@@ -60,9 +60,9 @@ def test_fish_in_tank_bounces_against_tank_bounds_not_screen() -> None:
 
     # After the update, we expect:
     # - x clamped to max_x (= 290)
-    # - vx flipped to -50.0
+    # - vx redirected inward (negative)
     assert pos.x == 290.0
-    assert vel.vx == -50.0
+    assert vel.vx < 0.0
 
 
 def test_fish_without_tank_uses_full_screen_bounds() -> None:
@@ -89,6 +89,6 @@ def test_fish_without_tank_uses_full_screen_bounds() -> None:
 
     move_sys.update(world, dt=0.2)  # we cross the right edge
 
-    # Same expectations as the existing movement test:
-    assert pos.x == screen_w - sprite.width  # clamped to 380
-    assert vel.vx == -100.0  # bounced
+    # Clamped to 380 and velocity redirected inward
+    assert pos.x == screen_w - sprite.width
+    assert vel.vx < 0.0

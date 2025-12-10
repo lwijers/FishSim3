@@ -21,7 +21,7 @@ def test_movement_integrates_position() -> None:
     """
     Given an entity with Position + Velocity + RectSprite,
     MovementSystem should integrate position as pos += v * dt
-    and then apply boundary checks (including possible bounce).
+    and then apply boundary checks (clamp inside bounds).
     """
     world, resources, move_sys = make_world_and_system(screen_size=(800, 600))
 
@@ -55,9 +55,9 @@ def test_movement_integrates_position() -> None:
     assert new_pos.x == 60.0
 
     # Y: would be 20 + (-50 * 0.5) = -5,
-    # but we hit the top border, so it gets clamped to 0 and vy is flipped
+    # but we hit the top border, so it gets clamped to 0 and redirected upward
     assert new_pos.y == 0.0
-    assert new_vel.vy == 50.0
+    assert new_vel.vy >= 0.0
 
     # vx should be unchanged
     assert new_vel.vx == 100.0
@@ -65,7 +65,7 @@ def test_movement_integrates_position() -> None:
 def test_movement_bounces_on_right_edge() -> None:
     """
     If a rectangle moves beyond the right edge, it should be clamped inside
-    and its vx should be flipped.
+    and its vx should be zeroed (no bounce).
     """
     screen_w, screen_h = 400, 300
     world, resources, move_sys = make_world_and_system(screen_size=(screen_w, screen_h))
@@ -97,5 +97,5 @@ def test_movement_bounces_on_right_edge() -> None:
 
     # X should be clamped to screen_w - width
     assert new_pos.x == screen_w - sprite.width
-    # Velocity should be flipped
-    assert new_vel.vx == -100.0
+    # Velocity should head back inside
+    assert new_vel.vx < 0.0

@@ -1,0 +1,16 @@
+{
+  "_version": 1,
+  "max_accel": 80.0,
+  "max_speed": 140.0,
+
+  "avoid_margin": 80.0,
+
+  "avoid_brake_min_factor": 0.25,
+
+  "debug": {
+    "vector_scale": 0.2,
+    "arrow_size": 6.0,
+    "color_velocity": [0, 200, 255],
+    "color_intent": [255, 200, 0]
+  }
+}

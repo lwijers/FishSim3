@@ -27,7 +27,7 @@ class UILabelSystem(System):
                 continue
             # If attached to a panel, respect panel visibility flag
             panel_id = panel_links.get(eid)
-            if panel_id and not panel_visibility.get(panel_id, False):
+            if panel_id is not None and panel_id in panel_visibility and not panel_visibility.get(panel_id, False):
                 continue
             style = styles.get(ui_elem.style, {})
             color = tuple(style.get("text_color", (255, 255, 255)))
