@@ -34,7 +34,7 @@ def load_pellet_config() -> Dict[str, Any]:
 
 def load_fsm_config() -> Dict[str, Any]:
     """
-    Fish FSM config: start state weights, idle/cruise duration ranges.
+    Fish FSM config: start state weights, idle/cruise duration ranges, cruise placement tuning.
     """
     return load_json("fsm.json")
 

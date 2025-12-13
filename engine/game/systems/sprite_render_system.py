@@ -5,6 +5,7 @@ from engine.ecs import System, World
 from engine.resources import ResourceStore
 from engine.app.constants import FALLBACK_SCREEN_SIZE
 from engine.game.components.position import Position
+from engine.game.components.velocity import Velocity
 from engine.game.components.sprite_ref import SpriteRef
 
 
@@ -58,6 +59,7 @@ class SpriteRenderSystem(System):
         offset_y = (screen_h - render_h) / 2.0
 
         # Draw all entities that have Position + SpriteRef
+        vel_store = world.get_components(Velocity)
         for eid, pos, sprite in world.view(Position, SpriteRef):
             if not assets.has_image(sprite.sprite_id):
                 continue
@@ -69,7 +71,14 @@ class SpriteRenderSystem(System):
             w_px = sprite.width * scale
             h_px = sprite.height * scale
 
-            renderer.draw_image(image, x_px, y_px, w_px, h_px)
+            flip_x = bool(getattr(sprite, "facing_left", False))
+            # Fallback: if no facing flag yet, infer from velocity when present.
+            if not flip_x:
+                vel = vel_store.get(eid)
+                if vel is not None and abs(vel.vx) > 1e-3:
+                    flip_x = vel.vx < 0.0
+
+            renderer.draw_image(image, x_px, y_px, w_px, h_px, flip_x=flip_x)
 
         # Present the composed frame after all sprites have been drawn.
         renderer.present()

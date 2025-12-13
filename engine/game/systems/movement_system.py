@@ -8,6 +8,7 @@ from engine.app.constants import FALLBACK_SCREEN_SIZE
 from engine.game.components.position import Position
 from engine.game.components.velocity import Velocity
 from engine.game.components.rect_sprite import RectSprite
+from engine.game.components.sprite_ref import SpriteRef
 from engine.game.components.in_tank import InTank
 from engine.game.components.tank_bounds import TankBounds
 from engine.game.components.movement_intent import MovementIntent
@@ -54,6 +55,7 @@ class MovementSystem(System):
         #  - avoid_brake_min_factor: minimum speed factor at the wall (0..1)
         avoid_margin = float(avoid_cfg.get("margin", 0.0))
         avoid_brake_min_factor = float(avoid_cfg.get("brake_min_factor", move_cfg.get("avoid_brake_min_factor", 0.3)))
+        avoid_brake_min_factor = max(0.0, min(1.0, avoid_brake_min_factor))
         avoid_strength = float(avoid_cfg.get("strength", 0.0))
 
         # Redirect config when clamped
@@ -67,6 +69,7 @@ class MovementSystem(System):
         tank_bounds_store = world.get_components(TankBounds)
         intent_store = world.get_components(MovementIntent)
         falling_store = world.get_components(Falling)
+        sprite_ref_store = world.get_components(SpriteRef)
 
         for eid, pos, vel, sprite in world.view(Position, Velocity, RectSprite):
             falling = falling_store.get(eid)
@@ -168,6 +171,12 @@ class MovementSystem(System):
                         if dist_bottom < avoid_margin:
                             weight = 1.0 - dist_bottom / avoid_margin
                             push_y -= avoid_strength * weight
+                        if max_accel > 0.0:
+                            mag = math.hypot(push_x, push_y)
+                            if mag > max_accel:
+                                scale = max_accel / mag
+                                push_x *= scale
+                                push_y *= scale
                         vel.vx += push_x * dt
                         vel.vy += push_y * dt
 
@@ -184,12 +193,8 @@ class MovementSystem(System):
                         vel.vy *= brake
 
             # ------------------------------------------------------------
-            # 3) Integrate position
+            # 3) Clamp speed before integrating, then integrate position
             # ------------------------------------------------------------
-            pos.x += vel.vx * dt
-            pos.y += vel.vy * dt
-
-            # Optional speed clamp
             if max_speed > 0.0:
                 speed2 = vel.vx * vel.vx + vel.vy * vel.vy
                 max_speed2 = max_speed * max_speed
@@ -199,6 +204,9 @@ class MovementSystem(System):
                         scale = max_speed / speed
                         vel.vx *= scale
                         vel.vy *= scale
+
+            pos.x += vel.vx * dt
+            pos.y += vel.vy * dt
 
             # ------------------------------------------------------------
             # 4) Boundary handling: clamp + redirect intent/velocity inward
@@ -220,6 +228,10 @@ class MovementSystem(System):
                 pos.y = max_y
 
             if not (hit_left or hit_right or hit_top or hit_bottom):
+                # Keep sprite facing the direction of travel when inside bounds.
+                sprite_ref = sprite_ref_store.get(eid)
+                if sprite_ref is not None and abs(vel.vx) > 1e-3:
+                    sprite_ref.facing_left = vel.vx < 0.0
                 continue
 
             if intent is None:
@@ -240,14 +252,9 @@ class MovementSystem(System):
             # Redirect intent/velocity inward
             speed = math.hypot(vel.vx, vel.vy)
             if speed <= 1e-5:
-                if redirect_min_speed > 0:
-                    speed = redirect_min_speed
-                elif max_speed > 0:
-                    speed = max_speed
-                else:
-                    speed = 50.0
-            else:
-                speed = max(speed, redirect_min_speed) if redirect_min_speed > 0 else speed
+                speed = 0.0
+            if redirect_min_speed > 0.0:
+                speed = max(speed, redirect_min_speed)
 
             dir_x = 0.0
             dir_y = 0.0
@@ -290,3 +297,8 @@ class MovementSystem(System):
             vel.vy = new_vy
             intent.target_vx = new_vx
             intent.target_vy = new_vy
+            # Redirect invalidates the old debug target; AI will pick a fresh one.
+
+            sprite_ref = sprite_ref_store.get(eid)
+            if sprite_ref is not None and abs(new_vx) > 1e-3:
+                sprite_ref.facing_left = new_vx < 0.0

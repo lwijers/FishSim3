@@ -5,5 +5,13 @@
     "cruise": 0.5
   },
   "idle_duration_range": [1.0, 2.0],
-  "cruise_duration_range": [2.0, 3.5]
+  "cruise_duration_range": [2.0, 10.5],
+  "cruise_inner_margin": 40.0,
+  "cruise_fallback_radius": 60.0,
+  "cruise_retarget_min_distance": 5.0,
+  "cruise_retarget_distance_factor": 0.2,
+  "transition_weights": {
+    "idle": { "idle": 0.0, "cruise": 1.0 },
+    "cruise": { "idle": 0, "cruise": 9.0 } 
+  }
 }

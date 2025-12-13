@@ -15,8 +15,8 @@ class Renderer:
     def __init__(self, screen: pygame.Surface, bg_color=None) -> None:
         self.screen = screen
         self.bg_color = tuple(bg_color) if bg_color is not None else DEFAULT_BG_COLOR
-        # Cache of scaled surfaces: {(id(image), target_size): scaled_surface}
-        self._scale_cache: dict[tuple[int, tuple[int, int]], pygame.Surface] = {}
+        # Cache of transformed surfaces: {(id(image), target_size, flip_x): surface}
+        self._scale_cache: dict[tuple[int, tuple[int, int], bool], pygame.Surface] = {}
         self._font_cache: dict[tuple[int, str], pygame.font.Font] = {}
 
     def clear(self) -> None:
@@ -51,19 +51,25 @@ class Renderer:
         y: float,
         width: float,
         height: float,
+        flip_x: bool = False,
     ) -> None:
-        """Draw a (possibly scaled) image at the given screen-space rect."""
+        """Draw a (possibly scaled/flipped) image at the given screen-space rect."""
         if width <= 0 or height <= 0:
             return
 
         target_size = (int(width), int(height))
-        cache_key = (id(image), target_size)
+        cache_key = (id(image), target_size, bool(flip_x))
 
-        # Reuse scaled surfaces when possible to avoid per-frame allocations.
-        if image.get_size() != target_size:
+        # Reuse transformed surfaces when possible to avoid per-frame allocations.
+        needs_transform = image.get_size() != target_size or flip_x
+        if needs_transform:
             cached = self._scale_cache.get(cache_key)
             if cached is None:
-                cached = pygame.transform.smoothscale(image, target_size)
+                cached = image
+                if image.get_size() != target_size:
+                    cached = pygame.transform.smoothscale(image, target_size)
+                if flip_x:
+                    cached = pygame.transform.flip(cached, True, False)
                 self._scale_cache[cache_key] = cached
             image = cached
 

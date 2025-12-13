@@ -151,3 +151,40 @@ def test_cruise_uses_species_speed_range() -> None:
     speed = math.hypot(intent.target_vx, intent.target_vy)
 
     assert speed_min <= speed <= speed_max
+
+
+def test_fsm_respects_configured_durations() -> None:
+    """
+    FSM should use the configured idle/cruise duration ranges from fsm_config.
+    """
+    world = World()
+    resources = ResourceStore()
+    resources.set("rng_ai", random.Random(42))
+    resources.set(
+        "fsm_config",
+        {
+            "start_state_weights": {"idle": 1.0},
+            "idle_duration_range": [0.1, 0.1],
+            "cruise_duration_range": [0.2, 0.2],
+        },
+    )
+
+    fsm_sys = FishFSMSystem(resources)
+
+    eid = world.create_entity()
+    world.add_component(eid, Fish(species_id="debug_fish"))
+    brain = Brain()
+    intent = MovementIntent()
+    world.add_component(eid, brain)
+    world.add_component(eid, intent)
+
+    # Advance exactly idle duration -> should enter cruise
+    fsm_sys.update(world, dt=0.1)
+    assert brain.state == "cruise"
+    assert brain.time_in_state == 0.0
+
+    # Advance exactly cruise duration -> should return to idle
+    fsm_sys.update(world, dt=0.2)
+    assert brain.state == "idle"
+    assert intent.target_vx == 0.0
+    assert intent.target_vy == 0.0

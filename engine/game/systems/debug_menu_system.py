@@ -4,7 +4,7 @@ from typing import Dict
 from engine.ecs import System, World
 from engine.resources import ResourceStore
 from engine.game.events.input_events import KeyEvent
-from engine.game.components import UILabel, MouseState
+from engine.game.components import UILabel, MouseState, Fish, Tank
 from engine.game.debug import DebugRegistry
 
 
@@ -100,10 +100,15 @@ class DebugManagerSystem(System):
             ms_store = world.get_components(MouseState)
             mouse_state = ms_store.get(resources._mouse_eid)
         active_tool = resources.try_get("active_tool")
-        entity_count = sum(len(store) for store in world._components.values()) if hasattr(world, "_components") else 0
+        tank_count = len(world.get_components(Tank))
+        fish_store = world.get_components(Fish)
+        fish_count = len(fish_store)
+        debug_fish_count = sum(1 for fish in fish_store.values() if fish.species_id.lower().startswith("debug"))
         return {
             "debug_fps": f"FPS: {self._fps:.1f}",
-            "debug_entities": f"Entities: {entity_count}",
+            "debug_entities_tanks": f"Tanks: {tank_count}",
+            "debug_entities_fish": f"Fish: {fish_count}",
+            "debug_entities_debug": f"Debug: {debug_fish_count}",
             "debug_tool": f"Tool: {active_tool or 'none'}",
             "debug_mouse": f"Mouse: ({mouse_state.x:.0f}, {mouse_state.y:.0f})" if mouse_state else "Mouse: n/a",
         }

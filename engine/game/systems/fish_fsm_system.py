@@ -13,6 +13,10 @@ from engine.app.constants import (
     FSM_IDLE_DURATION,
     FSM_CRUISE_DURATION,
     FSM_DEFAULT_CRUISE_SPEED,
+    FSM_CRUISE_INNER_MARGIN,
+    FSM_CRUISE_FALLBACK_RADIUS,
+    FSM_CRUISE_RETARGET_MIN_DISTANCE,
+    FSM_CRUISE_RETARGET_DISTANCE_FACTOR,
     RNG_ROOT_SEED,
     RNG_MAX_INT,
 )
@@ -51,17 +55,34 @@ class FishFSMSystem(System):
         self._start_weights = fsm_cfg.get("start_state_weights", {"idle": 0.5, "cruise": 0.5})
         idle_range = fsm_cfg.get("idle_duration_range", [self.IDLE_DURATION, self.IDLE_DURATION])
         cruise_range = fsm_cfg.get("cruise_duration_range", [self.CRUISE_DURATION, self.CRUISE_DURATION])
+        cruise_inner_margin = float(fsm_cfg.get("cruise_inner_margin", FSM_CRUISE_INNER_MARGIN))
+        cruise_fallback_radius = float(fsm_cfg.get("cruise_fallback_radius", FSM_CRUISE_FALLBACK_RADIUS))
+        cruise_retarget_min_distance = float(
+            fsm_cfg.get("cruise_retarget_min_distance", FSM_CRUISE_RETARGET_MIN_DISTANCE)
+        )
+        cruise_retarget_distance_factor = float(
+            fsm_cfg.get("cruise_retarget_distance_factor", FSM_CRUISE_RETARGET_DISTANCE_FACTOR)
+        )
+        transition_weights = fsm_cfg.get("transition_weights", {})
+        idle_transitions = transition_weights.get("idle") if isinstance(transition_weights, dict) else None
+        cruise_transitions = transition_weights.get("cruise") if isinstance(transition_weights, dict) else None
 
         # Optional species config (for speed ranges)
         species_cfg = resources.try_get("species_config", {})
 
         # State registry
         self._states: Dict[str, object] = {
-            "idle": IdleState(duration_range=idle_range),
+            "idle": IdleState(duration_range=idle_range, transition_weights=idle_transitions, fallback_next="cruise"),
             "cruise": CruiseState(
                 duration_range=cruise_range,
                 species_cfg=species_cfg,
                 default_speed=self.DEFAULT_CRUISE_SPEED,
+                inner_margin=cruise_inner_margin,
+                fallback_radius=cruise_fallback_radius,
+                retarget_min_distance=cruise_retarget_min_distance,
+                retarget_distance_factor=cruise_retarget_distance_factor,
+                transition_weights=cruise_transitions,
+                fallback_next="idle",
             ),
         }
 

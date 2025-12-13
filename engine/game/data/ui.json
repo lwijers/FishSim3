@@ -72,7 +72,7 @@
       "x": 12.0,
       "y": 12.0,
       "width": 220.0,
-      "height": 120.0,
+      "height": 170.0,
       "visible_flag": "debug_enabled"
     },
     {
@@ -85,12 +85,30 @@
       "panel": "debug_panel"
     },
     {
-      "id": "debug_text_entities",
+      "id": "debug_text_tanks",
       "type": "label",
       "style": "debug_text",
       "x": 20.0,
       "y": 50.0,
-      "text_key": "debug_entities",
+      "text_key": "debug_entities_tanks",
+      "panel": "debug_panel"
+    },
+    {
+      "id": "debug_text_fish",
+      "type": "label",
+      "style": "debug_text",
+      "x": 20.0,
+      "y": 70.0,
+      "text_key": "debug_entities_fish",
+      "panel": "debug_panel"
+    },
+    {
+      "id": "debug_text_debug",
+      "type": "label",
+      "style": "debug_text",
+      "x": 20.0,
+      "y": 90.0,
+      "text_key": "debug_entities_debug",
       "panel": "debug_panel"
     },
     {
@@ -98,7 +116,7 @@
       "type": "label",
       "style": "debug_text",
       "x": 20.0,
-      "y": 70.0,
+      "y": 110.0,
       "text_key": "debug_tool",
       "panel": "debug_panel"
     },
@@ -107,7 +125,7 @@
       "type": "label",
       "style": "debug_text",
       "x": 20.0,
-      "y": 90.0,
+      "y": 130.0,
       "text_key": "debug_mouse",
       "panel": "debug_panel"
     },

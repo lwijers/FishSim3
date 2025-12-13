@@ -25,6 +25,7 @@ class MovementDebugSystem(System):
         arrow_size = float(dbg.get("arrow_size", 6.0))
         col_v = tuple(dbg.get("color_velocity", (0, 200, 255)))
         col_i = tuple(dbg.get("color_intent", (255, 200, 0)))
+        col_t = tuple(dbg.get("color_target", (0, 255, 120)))
 
         screen_w, screen_h = resources.try_get("screen_size", (1280, 720))
         logical_w, logical_h = resources.try_get("logical_size", (1280, 720))
@@ -50,14 +51,21 @@ class MovementDebugSystem(System):
 
             intent = intents.get(eid)
             if intent:
-                ivx = intent.target_vx * scale * uniform
-                ivy = intent.target_vy * scale * uniform
-
-                renderer.draw_line((x, y), (x + ivx, y + ivy),
-                                   color=col_i, width=2)
-                self._arrow(renderer, x + ivx, y + ivy,
-                            intent.target_vx, intent.target_vy,
-                            col_i, arrow_size)
+                if intent.debug_target is not None:
+                    tx, ty = intent.debug_target
+                    sx = off_x + tx * uniform
+                    sy = off_y + ty * uniform
+                    renderer.draw_line((x, y), (sx, sy), color=col_t, width=1)
+                    renderer.draw_line((x, y), (sx, sy), color=col_i, width=2)
+                    self._arrow(renderer, sx, sy, tx - pos.x, ty - pos.y, col_i, arrow_size)
+                else:
+                    ivx = intent.target_vx * scale * uniform
+                    ivy = intent.target_vy * scale * uniform
+                    renderer.draw_line((x, y), (x + ivx, y + ivy),
+                                       color=col_i, width=2)
+                    self._arrow(renderer, x + ivx, y + ivy,
+                                intent.target_vx, intent.target_vy,
+                                col_i, arrow_size)
 
 
     def _arrow(self, renderer, tip_x, tip_y, dx, dy, color, size):

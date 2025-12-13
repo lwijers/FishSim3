@@ -16,7 +16,7 @@ class FakeRenderer:
         self.cleared = False
         self.presented = False
         self.draw_calls = []  # list of (x, y, w, h, color, outline_width)
-        self.image_calls = []  # list of (image, x, y, w, h)
+        self.image_calls = []  # list of (image, x, y, w, h, flip_x)
 
     def clear(self) -> None:
         self.cleared = True
@@ -27,8 +27,8 @@ class FakeRenderer:
     def draw_rect(self, x, y, w, h, color, outline_width=0) -> None:
         self.draw_calls.append((x, y, w, h, color, outline_width))
 
-    def draw_image(self, image, x, y, w, h) -> None:
-        self.image_calls.append((image, x, y, w, h))
+    def draw_image(self, image, x, y, w, h, flip_x=False) -> None:
+        self.image_calls.append((image, x, y, w, h, flip_x))
 
 
 def _make_world_and_render_system(

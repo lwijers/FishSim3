@@ -36,6 +36,10 @@ DEFAULT_WINDOW_TITLE: str = "FishSim3 MVP"
 FSM_IDLE_DURATION: float = 1.0
 FSM_CRUISE_DURATION: float = 2.0
 FSM_DEFAULT_CRUISE_SPEED: float = 80.0
+FSM_CRUISE_INNER_MARGIN: float = 40.0
+FSM_CRUISE_FALLBACK_RADIUS: float = 60.0
+FSM_CRUISE_RETARGET_MIN_DISTANCE: float = 5.0
+FSM_CRUISE_RETARGET_DISTANCE_FACTOR: float = 0.2
 
 # Default tank id used at startup if no explicit choice is configured.
 DEFAULT_TANK_ID: str = "tank_1"
